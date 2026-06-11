@@ -1,5 +1,5 @@
 import { describe, test, expect, afterEach } from "vitest";
-import regex from "./regex.ts";
+import regex, { isValidEmbedCode } from "./regex.ts";
 
 describe("regex", () => {
   afterEach(() => {
@@ -107,5 +107,18 @@ describe("regex", () => {
     expect(result![0]).toEqual(
       "{{embed:content_block_pension:1690ab79-1880-461e-99e4-ed146fd9efab}}",
     );
+  });
+
+  test("validates full embed codes only", () => {
+    expect(
+      isValidEmbedCode(
+        "{{embed:content_block_pension:1690ab79-1880-461e-99e4-ed146fd9efab}}",
+      ),
+    ).toBe(true);
+
+    expect(isValidEmbedCode("prefix {{embed:contact:abc-123}} suffix")).toBe(
+      false,
+    );
+    expect(isValidEmbedCode("not an embed code")).toBe(false);
   });
 });

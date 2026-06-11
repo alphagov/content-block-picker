@@ -53,7 +53,14 @@ Then initialise the Javascript:
 ```javascript
 import { ContentBlockEditor } from "content-block-editor";
 
-ContentBlockEditor.initAll();
+ContentBlockEditor.initAll({
+  baseUrl: "http://content-block-manager.dev.gov.uk",
+});
+// or
+ContentBlockEditor.initAll({
+  baseUrl: "http://content-block-manager.dev.gov.uk",
+  embedPreviewDelayMs: 500,
+});
 ```
 
 ## Demo

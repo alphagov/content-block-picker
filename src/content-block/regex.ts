@@ -30,4 +30,9 @@ const pattern = [
 
 const embedRegex = new RegExp(pattern, "g");
 
+const embedCodeRegex = new RegExp(`^${pattern}$`);
+
+export const isValidEmbedCode = (embedCode: string): boolean =>
+  embedCodeRegex.test(embedCode);
+
 export default embedRegex;

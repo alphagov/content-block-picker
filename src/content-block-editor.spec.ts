@@ -5,8 +5,19 @@ describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;
   let editor: ContentBlockEditor;
 
-  const testDelayMs = 314;
-  const testEndpoint = "/api/foo";
+  const embedPreviewDelayMs = 314;
+  const baseUrl = "http://not-used.test";
+
+  function mockSuccessFetch() {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: vi.fn().mockResolvedValue("<p>Rendered</p>"),
+    } as unknown as Response);
+
+    vi.stubGlobal("fetch", fetchMock);
+    return fetchMock;
+  }
 
   beforeEach(() => {
     document.body.innerHTML = `
@@ -15,7 +26,7 @@ describe("ContentBlockPicker", () => {
       </div>
     `;
     textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
-    editor = new ContentBlockEditor(textarea);
+    editor = new ContentBlockEditor(textarea, { baseUrl, embedPreviewDelayMs });
   });
 
   describe("initializeModule", () => {
@@ -93,11 +104,10 @@ describe("ContentBlockPicker", () => {
 
   describe("constructor & events", () => {
     test("the constructor initializes everything correctly", () => {
-      const editorInstance = new ContentBlockEditor(
-        textarea,
-        testDelayMs,
-        testEndpoint,
-      );
+      const editorInstance = new ContentBlockEditor(textarea, {
+        baseUrl,
+        embedPreviewDelayMs,
+      });
 
       expect(editorInstance.textarea).toBe(textarea);
       expect(
@@ -120,12 +130,11 @@ describe("ContentBlockPicker", () => {
         ),
       ).toBe(true);
       expect(editorInstance.preview.getAttribute("aria-hidden")).toBe("true");
-      expect(editorInstance.embedPreviewDelayMs).toBe(testDelayMs);
-      expect(editorInstance.embedRenderEndpoint).toBe(testEndpoint);
+      expect(editorInstance.embedPreviewDelayMs).toBe(embedPreviewDelayMs);
     });
 
     test("it updates the highlight on input", () => {
-      new ContentBlockEditor(textarea);
+      new ContentBlockEditor(textarea, { baseUrl });
       textarea.value = "{{embed:contact:123}}";
       textarea.dispatchEvent(new Event("input"));
 
@@ -136,7 +145,7 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it syncs scroll positions", () => {
-      const editorInstance = new ContentBlockEditor(textarea);
+      const editorInstance = new ContentBlockEditor(textarea, { baseUrl });
       textarea.scrollTop = 50;
       textarea.scrollLeft = 20;
       textarea.dispatchEvent(new Event("scroll"));
@@ -147,7 +156,7 @@ describe("ContentBlockPicker", () => {
 
     test("it initializes ResizeObserver to sync scroll on resize", () => {
       const observeSpy = vi.spyOn(ResizeObserver.prototype, "observe");
-      new ContentBlockEditor(textarea);
+      new ContentBlockEditor(textarea, { baseUrl });
 
       expect(observeSpy).toHaveBeenCalledWith(textarea);
     });
@@ -159,7 +168,7 @@ describe("ContentBlockPicker", () => {
         <textarea data-module="content-block-highlight"></textarea>
         <textarea data-module="content-block-highlight"></textarea>
       `;
-      const editors = ContentBlockEditor.initAll();
+      const editors = ContentBlockEditor.initAll({ baseUrl });
       expect(editors.length).toBe(2);
       expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
     });
@@ -168,9 +177,28 @@ describe("ContentBlockPicker", () => {
       document.body.innerHTML = `
         <textarea data-module="content-block-highlight some-other-module"></textarea>
       `;
-      const editors = ContentBlockEditor.initAll();
+      const editors = ContentBlockEditor.initAll({ baseUrl });
       expect(editors.length).toBe(1);
       expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
+    });
+
+    test("it passes baseUrl from options to API requests", async () => {
+      const fetchMock = mockSuccessFetch();
+      document.body.innerHTML = `
+        <textarea data-module="content-block-highlight">{{embed:contact:123}}</textarea>
+      `;
+
+      const [editorInstance] = ContentBlockEditor.initAll({
+        baseUrl: "https://publisher.test",
+      });
+
+      editorInstance.textarea.dispatchEvent(new Event("input"));
+
+      await vi.waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          "https://publisher.test/api/blocks/%7B%7Bembed%3Acontact%3A123%7D%7D/render",
+        );
+      });
     });
   });
 });

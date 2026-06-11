@@ -1,28 +1,32 @@
 import "../scss/base.scss";
 import embedRegex from "./content-block/regex.ts";
 import { createHoverPreviewElement } from "./content-block/hover-preview-utils.ts";
+import { APIClient } from "./content-block/api-client.ts";
+
+export interface ContentBlockEditorOptions {
+  baseUrl: string;
+  embedPreviewDelayMs?: number;
+}
 
 export class ContentBlockEditor {
   readonly embedPreviewDelayMs: number;
-  readonly embedRenderEndpoint: string;
   textarea: HTMLTextAreaElement;
   wrapper: HTMLDivElement;
   highlight: HTMLDivElement;
   preview: HTMLDivElement;
+  apiClient: APIClient;
 
-  constructor(
-    element: Element,
-    embedPreviewDelayMs: number = 200,
-    embedRenderEndpoint: string = "/api/blocks/render",
-  ) {
-    this.embedPreviewDelayMs = embedPreviewDelayMs;
-    this.embedRenderEndpoint = embedRenderEndpoint;
+  constructor(element: Element, options: ContentBlockEditorOptions) {
+    this.embedPreviewDelayMs = options?.embedPreviewDelayMs ?? 200;
     this.textarea = this.initializeModule(element);
     this.wrapper = this.createWrapper();
     this.highlight = this.createHighlight();
 
     this.preview = createHoverPreviewElement();
     this.wrapper.appendChild(this.preview);
+
+    const baseUrl = options.baseUrl;
+    this.apiClient = new APIClient(baseUrl);
 
     this.textarea.classList.add("content-block-highlight__input");
 
@@ -92,15 +96,22 @@ export class ContentBlockEditor {
     );
 
     this.highlight.innerHTML = text;
+    const allEmbedCodes = text.matchAll(embedRegex);
+    for (const embedCode of allEmbedCodes) {
+      void this.apiClient.get(embedCode[0]).catch((e) => console.error(e));
+    }
   }
 
-  static initAll(scope: ParentNode = document): ContentBlockEditor[] {
+  static initAll(
+    options: ContentBlockEditorOptions,
+    scope: ParentNode = document,
+  ): ContentBlockEditor[] {
     const elements = scope.querySelectorAll(
       '[data-module~="content-block-highlight"]',
     );
 
     return Array.from(elements).map(
-      (element) => new ContentBlockEditor(element),
+      (element) => new ContentBlockEditor(element, options),
     );
   }
 }

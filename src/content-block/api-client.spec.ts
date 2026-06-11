@@ -1,0 +1,130 @@
+import { beforeEach, describe, expect, test, vi } from "vitest";
+import { APIClient } from "./api-client";
+
+interface BlockResponse {
+  html: string;
+}
+
+function createSuccessResponse(data: BlockResponse): Response {
+  const text = vi.fn().mockResolvedValue(data.html);
+  return {
+    ok: true,
+    status: 200,
+    text,
+  } as unknown as Response;
+}
+
+function createErrorResponse(status: number): Response {
+  return {
+    ok: false,
+    status,
+    text: vi.fn(),
+  } as unknown as Response;
+}
+
+describe("APIClient", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  const baseUrl = "https://example.test";
+
+  beforeEach(() => {
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+
+  test("it fetches from the encoded block render URL", async () => {
+    const embedCode = "{{embed:contact:abc-123/some-path#full}}";
+    const expectedPayload: BlockResponse = { html: "<p>Rendered</p>" };
+    const expectedUrl = `${baseUrl}/api/blocks/${encodeURIComponent(embedCode)}/render`;
+    const client = new APIClient(baseUrl);
+
+    fetchMock.mockResolvedValue(createSuccessResponse(expectedPayload));
+
+    const result = await client.fetchPreview(embedCode);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(expectedUrl);
+    expect(result).toEqual(expectedPayload);
+  });
+
+  test("it reuses cached requests for the same embed code", async () => {
+    const embedCode = "{{embed:contact:abc-123}}";
+    const payload: BlockResponse = { html: "<p>Cached</p>" };
+    const client = new APIClient("http://not-used.test");
+
+    fetchMock.mockResolvedValue(createSuccessResponse(payload));
+
+    const firstResult = await client.fetchPreview(embedCode);
+    const secondResult = await client.fetchPreview(embedCode);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(firstResult).toEqual(payload);
+    expect(secondResult).toEqual(payload);
+  });
+
+  test("it removes failed requests from cache so retries can succeed", async () => {
+    const embedCode = "{{embed:contact:abc-123}}";
+    const client = new APIClient("http://not-used.test");
+    const payload: BlockResponse = { html: "<p>Retry worked</p>" };
+
+    fetchMock
+      .mockResolvedValueOnce(createErrorResponse(500))
+      .mockResolvedValueOnce(createSuccessResponse(payload));
+
+    await expect(client.fetchPreview(embedCode)).rejects.toThrow(
+      "Failed to fetch block {{embed:contact:abc-123}}: 500",
+    );
+
+    const result = await client.fetchPreview(embedCode);
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result).toEqual(payload);
+  });
+
+  test("it returns a cached promise only when present", async () => {
+    const embedCode = "{{embed:contact:abc-123}}";
+    const payload: BlockResponse = { html: "<p>Cached lookup</p>" };
+    const client = new APIClient("http://not-used.test");
+
+    fetchMock.mockResolvedValue(createSuccessResponse(payload));
+
+    expect(client.get(embedCode)).toBeUndefined();
+
+    const pending = client.fetchPreview(embedCode);
+    expect(client.get(embedCode)).toBe(pending);
+    await expect(pending).resolves.toEqual(payload);
+  });
+
+  test("buildUrl encodes the embed code in the render path", () => {
+    const embedCode = "{{embed:contact:abc-123/somepath#full}}";
+    const client = new APIClient(baseUrl) as unknown as {
+      buildUrl: (embed: string) => string;
+    };
+
+    const result = client.buildUrl(embedCode);
+
+    expect(result).toBe(
+      `${baseUrl}/api/blocks/${encodeURIComponent(embedCode)}/render`,
+    );
+  });
+
+  test("buildUrl rejects URLs outside the configured base path", () => {
+    // bit of a fudge to test the URL validation logic without exposing buildUrl as a public method, but it allows us
+    // to verify that the client correctly rejects embed codes that would result in URLs outside the base path
+    const client = new APIClient("https://example.test/editor/") as unknown as {
+      buildUrl: (embed: string) => string;
+    };
+    expect(() => client.buildUrl("{{embed:contact:abcd-123}}")).toThrow(
+      "is not within the base path",
+    );
+  });
+
+  test("it rejects embed codes that do not match the supported syntax", async () => {
+    const client = new APIClient(baseUrl);
+
+    await expect(client.fetchPreview("not an embed code")).rejects.toThrow(
+      "Invalid embed code: not an embed code",
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
