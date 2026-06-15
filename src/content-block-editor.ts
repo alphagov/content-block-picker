@@ -20,7 +20,7 @@ export class ContentBlockEditor {
   currentMarkUnderCursor: HTMLElement | null = null;
 
   constructor(element: Element, options: ContentBlockEditorOptions) {
-    this.embedPreviewDelayMs = options?.embedPreviewDelayMs ?? 200;
+    this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
     this.textarea = this.initializeModule(element);
     this.wrapper = this.createWrapper();
     this.highlight = this.createHighlight();
@@ -36,7 +36,10 @@ export class ContentBlockEditor {
     this.updateHighlight();
 
     this.textarea.addEventListener("input", () => this.updateHighlight());
-    this.textarea.addEventListener("scroll", () => this.syncScroll());
+    this.textarea.addEventListener("scroll", () => {
+      this.syncScroll();
+      this.onTextareaMouseLeave();
+    });
     this.textarea.addEventListener(
       "mousemove",
       (event) => void this.onTextareaMouseMove(event),
@@ -136,9 +139,10 @@ export class ContentBlockEditor {
   }
 
   getMarkUnderCursor(event: MouseEvent): HTMLElement | null {
+    const previousPointerEvents = this.textarea.style.pointerEvents;
     this.textarea.style.pointerEvents = "none";
     const el = document.elementFromPoint(event.clientX, event.clientY);
-    this.textarea.style.pointerEvents = "";
+    this.textarea.style.pointerEvents = previousPointerEvents;
     if (!(el instanceof Element)) return null;
     const mark = el.closest(".content-block-highlight__mark");
     return mark instanceof HTMLElement ? mark : null;
@@ -177,6 +181,7 @@ export class ContentBlockEditor {
       this.preview.innerHTML = preview.html;
       this.positionHoverPreview(mark);
       this.preview.hidden = false;
+      this.preview.setAttribute("aria-hidden", "false");
     } catch (error) {
       console.error(error);
       this.hideHoverPreview();
@@ -196,6 +201,7 @@ export class ContentBlockEditor {
 
   private hideHoverPreview() {
     this.preview.hidden = true;
+    this.preview.setAttribute("aria-hidden", "true");
     this.preview.innerHTML = "";
   }
 

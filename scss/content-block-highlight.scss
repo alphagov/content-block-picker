@@ -32,6 +32,7 @@ textarea.content-block-highlight__input {
 .content-block-highlight__preview {
   position: absolute;
   z-index: 2;
+  pointer-events: none;
   max-width: 28rem;
   padding: 0.75rem;
   border: 1px solid $govuk-border-colour;
