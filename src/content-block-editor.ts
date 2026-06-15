@@ -15,6 +15,9 @@ export class ContentBlockEditor {
   highlight: HTMLDivElement;
   preview: HTMLDivElement;
   apiClient: APIClient;
+  hoverPreviewTimeoutId?: number;
+  activeHoverEmbedCode: string | null = null;
+  currentMarkUnderCursor: HTMLElement | null = null;
 
   constructor(element: Element, options: ContentBlockEditorOptions) {
     this.embedPreviewDelayMs = options?.embedPreviewDelayMs ?? 200;
@@ -34,6 +37,13 @@ export class ContentBlockEditor {
 
     this.textarea.addEventListener("input", () => this.updateHighlight());
     this.textarea.addEventListener("scroll", () => this.syncScroll());
+    this.textarea.addEventListener(
+      "mousemove",
+      (event) => void this.onTextareaMouseMove(event),
+    );
+    this.textarea.addEventListener("mouseleave", () =>
+      this.onTextareaMouseLeave(),
+    );
 
     // checks for changes to the dimensions of the textarea, and syncs the scroll position of the highlight accordingly
     // see docs: https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
@@ -96,9 +106,103 @@ export class ContentBlockEditor {
     );
 
     this.highlight.innerHTML = text;
+
     const allEmbedCodes = text.matchAll(embedRegex);
     for (const embedCode of allEmbedCodes) {
-      void this.apiClient.get(embedCode[0]).catch((e) => console.error(e));
+      void this.apiClient
+        .fetchPreview(embedCode[0])
+        .catch((e) => console.error(e));
+    }
+  }
+
+  async onTextareaMouseMove(event: MouseEvent) {
+    const mark = this.getMarkUnderCursor(event);
+    if (mark === this.currentMarkUnderCursor) return;
+
+    const previousMark = this.currentMarkUnderCursor;
+    this.currentMarkUnderCursor = mark;
+
+    if (previousMark) {
+      this.onMarkLeave();
+    }
+    if (mark) {
+      await this.onMarkEnter(mark);
+    }
+  }
+
+  onTextareaMouseLeave() {
+    this.currentMarkUnderCursor = null;
+    this.onMarkLeave();
+  }
+
+  getMarkUnderCursor(event: MouseEvent): HTMLElement | null {
+    this.textarea.style.pointerEvents = "none";
+    const el = document.elementFromPoint(event.clientX, event.clientY);
+    this.textarea.style.pointerEvents = "";
+    if (!(el instanceof Element)) return null;
+    const mark = el.closest(".content-block-highlight__mark");
+    return mark instanceof HTMLElement ? mark : null;
+  }
+
+  async onMarkEnter(mark: HTMLElement) {
+    const embedCode = mark.textContent?.trim();
+    if (!embedCode) return;
+
+    const cachedPreviewPromise = this.apiClient.get(embedCode);
+    if (!cachedPreviewPromise) return;
+
+    this.activeHoverEmbedCode = embedCode;
+    this.clearHoverTimer();
+
+    this.hoverPreviewTimeoutId = window.setTimeout(() => {
+      void this.renderHoverPreview(mark, embedCode, cachedPreviewPromise);
+    }, this.embedPreviewDelayMs);
+  }
+
+  onMarkLeave() {
+    this.activeHoverEmbedCode = null;
+    this.clearHoverTimer();
+    this.hideHoverPreview();
+  }
+
+  private async renderHoverPreview(
+    mark: HTMLElement,
+    embedCode: string,
+    cachedPreviewPromise: NonNullable<ReturnType<APIClient["get"]>>,
+  ) {
+    try {
+      const preview = await cachedPreviewPromise;
+      if (this.activeHoverEmbedCode !== embedCode) return;
+
+      this.preview.innerHTML = preview.html;
+      this.positionHoverPreview(mark);
+      this.preview.hidden = false;
+    } catch (error) {
+      console.error(error);
+      this.hideHoverPreview();
+    }
+  }
+
+  private positionHoverPreview(mark: HTMLElement) {
+    const markRect = mark.getBoundingClientRect();
+    const wrapperRect = this.wrapper.getBoundingClientRect();
+
+    const top = markRect.bottom - wrapperRect.top + 8;
+    const left = markRect.left - wrapperRect.left;
+
+    this.preview.style.top = `${top}px`;
+    this.preview.style.left = `${left}px`;
+  }
+
+  private hideHoverPreview() {
+    this.preview.hidden = true;
+    this.preview.innerHTML = "";
+  }
+
+  private clearHoverTimer() {
+    if (this.hoverPreviewTimeoutId !== undefined) {
+      window.clearTimeout(this.hoverPreviewTimeoutId);
+      this.hoverPreviewTimeoutId = undefined;
     }
   }
 

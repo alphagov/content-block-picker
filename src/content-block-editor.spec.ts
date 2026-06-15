@@ -102,6 +102,94 @@ describe("ContentBlockPicker", () => {
     });
   });
 
+  describe("hover preview", () => {
+    test("it renders cached HTML on mark mouseover", async () => {
+      const fetchMock = mockSuccessFetch();
+
+      textarea.value = "{{embed:contact:123}}";
+      textarea.dispatchEvent(new Event("input"));
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      const mark = editor.highlight.querySelector(
+        ".content-block-highlight__mark",
+      ) as HTMLElement;
+
+      vi.spyOn(editor, "getMarkUnderCursor").mockReturnValue(mark);
+      textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
+
+      await vi.waitFor(() => {
+        expect(editor.preview.hidden).toBe(false);
+        expect(editor.preview.innerHTML).toBe("<p>Rendered</p>");
+      });
+    });
+
+    test("it hides the preview on mark mouseout", async () => {
+      const fetchMock = mockSuccessFetch();
+
+      textarea.value = "{{embed:contact:123}}";
+      textarea.dispatchEvent(new Event("input"));
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      const mark = editor.highlight.querySelector(
+        ".content-block-highlight__mark",
+      ) as HTMLElement;
+
+      vi.spyOn(editor, "getMarkUnderCursor").mockReturnValue(mark);
+      textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
+      await vi.waitFor(() => expect(editor.preview.hidden).toBe(false));
+
+      textarea.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
+
+      expect(editor.preview.hidden).toBe(true);
+      expect(editor.preview.innerHTML).toBe("");
+    });
+
+    test("it hides the preview when the cursor moves off the mark", async () => {
+      const fetchMock = mockSuccessFetch();
+
+      textarea.value = "{{embed:contact:123}}";
+      textarea.dispatchEvent(new Event("input"));
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      const mark = editor.highlight.querySelector(
+        ".content-block-highlight__mark",
+      ) as HTMLElement;
+
+      const getMarkSpy = vi
+        .spyOn(editor, "getMarkUnderCursor")
+        .mockReturnValue(mark);
+      textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
+      await vi.waitFor(() => expect(editor.preview.hidden).toBe(false));
+
+      getMarkSpy.mockReturnValue(null);
+      textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+
+      expect(editor.preview.hidden).toBe(true);
+      expect(editor.preview.innerHTML).toBe("");
+    });
+
+    test("it does not show a preview when embed is not cached", async () => {
+      editor.highlight.innerHTML =
+        '<mark class="content-block-highlight__mark">{{embed:contact:123}}</mark>';
+      const mark = editor.highlight.querySelector(
+        ".content-block-highlight__mark",
+      ) as HTMLElement;
+
+      vi.spyOn(editor, "getMarkUnderCursor").mockReturnValue(mark);
+      textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+      await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
+
+      expect(editor.preview.hidden).toBe(true);
+      expect(editor.preview.innerHTML).toBe("");
+    });
+  });
+
   describe("constructor & events", () => {
     test("the constructor initializes everything correctly", () => {
       const editorInstance = new ContentBlockEditor(textarea, {
