@@ -13,7 +13,7 @@ export class ContentBlockEditor {
   textarea: HTMLTextAreaElement;
   wrapper: HTMLDivElement;
   highlight: HTMLDivElement;
-  preview: HTMLDivElement;
+  preview: HTMLIFrameElement;
   apiClient: APIClient;
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
@@ -178,7 +178,7 @@ export class ContentBlockEditor {
       const preview = await cachedPreviewPromise;
       if (this.activeHoverEmbedCode !== embedCode) return;
 
-      this.preview.innerHTML = preview.html;
+      this.preview.srcdoc = preview.html;
       this.positionHoverPreview(mark);
       this.preview.hidden = false;
       this.preview.setAttribute("aria-hidden", "false");

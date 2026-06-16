@@ -1,7 +1,10 @@
-export const createHoverPreviewElement = (): HTMLDivElement => {
-  const preview = document.createElement("div");
-  preview.className = "content-block-highlight__preview";
-  preview.hidden = true;
-  preview.setAttribute("aria-hidden", "true");
-  return preview;
-};
+export const createHoverPreviewElement = (): HTMLIFrameElement => {
+  const iframe = document.createElement("iframe");
+  iframe.className = "content-block-highlight__preview-frame";
+
+  // STRICT SANDBOX: Enables nothing except document rendering.
+  // No scripts, no forms, no same-origin cookie access.
+  iframe.setAttribute("sandbox", "");
+
+  return iframe;
+}
