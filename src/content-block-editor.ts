@@ -195,6 +195,7 @@ export class ContentBlockEditor {
     const top = markRect.bottom - wrapperRect.top + 8;
     const left = markRect.left - wrapperRect.left;
 
+    this.preview.style.position = "absolute";
     this.preview.style.top = `${top}px`;
     this.preview.style.left = `${left}px`;
   }

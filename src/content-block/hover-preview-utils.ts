@@ -7,4 +7,4 @@ export const createHoverPreviewElement = (): HTMLIFrameElement => {
   iframe.setAttribute("sandbox", "");
 
   return iframe;
-}
+};
