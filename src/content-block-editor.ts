@@ -1,6 +1,9 @@
 import "../scss/base.scss";
 import embedRegex from "./content-block/regex.ts";
-import { createHoverPreviewElement } from "./content-block/hover-preview-utils.ts";
+import {
+  createHoverPreviewElement,
+  makeIframePayload,
+} from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
 
 export interface ContentBlockEditorOptions {
@@ -47,6 +50,14 @@ export class ContentBlockEditor {
     this.textarea.addEventListener("mouseleave", () =>
       this.onTextareaMouseLeave(),
     );
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "resize-preview") {
+        if (this.preview instanceof HTMLIFrameElement) {
+          this.preview.style.height = `${event.data.height + 4}px`;
+          this.preview.style.width = `${event.data.width + 4}px`;
+        }
+      }
+    });
 
     // checks for changes to the dimensions of the textarea, and syncs the scroll position of the highlight accordingly
     // see docs: https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
@@ -178,7 +189,7 @@ export class ContentBlockEditor {
       const preview = await cachedPreviewPromise;
       if (this.activeHoverEmbedCode !== embedCode) return;
 
-      this.preview.srcdoc = preview.html;
+      this.preview.srcdoc = makeIframePayload(preview.html);
       this.positionHoverPreview(mark);
       this.preview.hidden = false;
       this.preview.setAttribute("aria-hidden", "false");

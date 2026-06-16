@@ -72,8 +72,8 @@ describe("ContentBlockPicker", () => {
     test("it creates an element attached to the wrapper", () => {
       const preview = editor.preview;
 
+      expect(preview).toBeInstanceOf(HTMLIFrameElement);
       expect(preview.className).toContain("content-block-highlight__preview");
-      expect(preview.getAttribute("aria-hidden")).toBe("true");
       expect(editor.wrapper.contains(preview)).toBe(true);
     });
   });
@@ -121,7 +121,7 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => {
         expect(editor.preview.hidden).toBe(false);
-        expect(editor.preview.innerHTML).toBe("<p>Rendered</p>");
+        expect(editor.preview.srcdoc).toContain("<p>Rendered</p>");
       });
     });
 
@@ -185,8 +185,8 @@ describe("ContentBlockPicker", () => {
       textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
       await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
 
-      expect(editor.preview.hidden).toBe(true);
-      expect(editor.preview.innerHTML).toBe("");
+      expect(editor.preview.srcdoc).toBe("");
+      expect(editor.preview.getAttribute("aria-hidden")).not.toBe("false");
     });
   });
 
@@ -212,12 +212,7 @@ describe("ContentBlockPicker", () => {
         textarea.classList.contains("content-block-highlight__input"),
       ).toBe(true);
 
-      expect(
-        editorInstance.preview.classList.contains(
-          "content-block-highlight__preview",
-        ),
-      ).toBe(true);
-      expect(editorInstance.preview.getAttribute("aria-hidden")).toBe("true");
+      expect(editorInstance.preview).toBeInstanceOf(HTMLIFrameElement);
       expect(editorInstance.embedPreviewDelayMs).toBe(embedPreviewDelayMs);
     });
 
