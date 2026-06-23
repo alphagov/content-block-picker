@@ -1,22 +1,63 @@
 import "../scss/base.scss";
 import embedRegex from "./content-block/regex.ts";
+import {
+  createHoverPreviewElement,
+  makeIframePayload,
+} from "./content-block/hover-preview-utils.ts";
+import { APIClient } from "./content-block/api-client.ts";
+
+export interface ContentBlockEditorOptions {
+  baseUrl: string;
+  embedPreviewDelayMs?: number;
+}
 
 export class ContentBlockEditor {
+  readonly embedPreviewDelayMs: number;
   textarea: HTMLTextAreaElement;
   wrapper: HTMLDivElement;
   highlight: HTMLDivElement;
+  preview: HTMLIFrameElement;
+  apiClient: APIClient;
+  hoverPreviewTimeoutId?: number;
+  activeHoverEmbedCode: string | null = null;
+  currentMarkUnderCursor: HTMLElement | null = null;
 
-  constructor(element: Element) {
+  constructor(element: Element, options: ContentBlockEditorOptions) {
+    this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
     this.textarea = this.initializeModule(element);
     this.wrapper = this.createWrapper();
     this.highlight = this.createHighlight();
+
+    this.preview = createHoverPreviewElement();
+    this.wrapper.appendChild(this.preview);
+
+    const baseUrl = options.baseUrl;
+    this.apiClient = new APIClient(baseUrl);
 
     this.textarea.classList.add("content-block-highlight__input");
 
     this.updateHighlight();
 
     this.textarea.addEventListener("input", () => this.updateHighlight());
-    this.textarea.addEventListener("scroll", () => this.syncScroll());
+    this.textarea.addEventListener("scroll", () => {
+      this.syncScroll();
+      this.onTextareaMouseLeave();
+    });
+    this.textarea.addEventListener(
+      "mousemove",
+      (event) => void this.onTextareaMouseMove(event),
+    );
+    this.textarea.addEventListener("mouseleave", () =>
+      this.onTextareaMouseLeave(),
+    );
+    window.addEventListener("message", (event) => {
+      if (event.data && event.data.type === "resize-preview") {
+        if (this.preview instanceof HTMLIFrameElement) {
+          this.preview.style.height = `${event.data.height + 4}px`;
+          this.preview.style.width = `${event.data.width + 4}px`;
+        }
+      }
+    });
 
     // checks for changes to the dimensions of the textarea, and syncs the scroll position of the highlight accordingly
     // see docs: https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
@@ -79,15 +120,120 @@ export class ContentBlockEditor {
     );
 
     this.highlight.innerHTML = text;
+
+    const allEmbedCodes = text.matchAll(embedRegex);
+    for (const embedCode of allEmbedCodes) {
+      void this.apiClient
+        .fetchPreview(embedCode[0])
+        .catch((e) => console.error(e));
+    }
   }
 
-  static initAll(scope: ParentNode = document): ContentBlockEditor[] {
+  async onTextareaMouseMove(event: MouseEvent) {
+    const mark = this.getMarkUnderCursor(event);
+    if (mark === this.currentMarkUnderCursor) return;
+
+    const previousMark = this.currentMarkUnderCursor;
+    this.currentMarkUnderCursor = mark;
+
+    if (previousMark) {
+      this.onMarkLeave();
+    }
+    if (mark) {
+      await this.onMarkEnter(mark);
+    }
+  }
+
+  onTextareaMouseLeave() {
+    this.currentMarkUnderCursor = null;
+    this.onMarkLeave();
+  }
+
+  getMarkUnderCursor(event: MouseEvent): HTMLElement | null {
+    const previousPointerEvents = this.textarea.style.pointerEvents;
+    this.textarea.style.pointerEvents = "none";
+    const el = document.elementFromPoint(event.clientX, event.clientY);
+    this.textarea.style.pointerEvents = previousPointerEvents;
+    if (!(el instanceof Element)) return null;
+    const mark = el.closest(".content-block-highlight__mark");
+    return mark instanceof HTMLElement ? mark : null;
+  }
+
+  async onMarkEnter(mark: HTMLElement) {
+    const embedCode = mark.textContent?.trim();
+    if (!embedCode) return;
+
+    const cachedPreviewPromise = this.apiClient.get(embedCode);
+    if (!cachedPreviewPromise) return;
+
+    this.activeHoverEmbedCode = embedCode;
+    this.clearHoverTimer();
+
+    this.hoverPreviewTimeoutId = window.setTimeout(() => {
+      void this.renderHoverPreview(mark, embedCode, cachedPreviewPromise);
+    }, this.embedPreviewDelayMs);
+  }
+
+  onMarkLeave() {
+    this.activeHoverEmbedCode = null;
+    this.clearHoverTimer();
+    this.hideHoverPreview();
+  }
+
+  private async renderHoverPreview(
+    mark: HTMLElement,
+    embedCode: string,
+    cachedPreviewPromise: NonNullable<ReturnType<APIClient["get"]>>,
+  ) {
+    try {
+      const preview = await cachedPreviewPromise;
+      if (this.activeHoverEmbedCode !== embedCode) return;
+
+      this.preview.srcdoc = makeIframePayload(preview.html);
+      this.positionHoverPreview(mark);
+      this.preview.hidden = false;
+      this.preview.setAttribute("aria-hidden", "false");
+    } catch (error) {
+      console.error(error);
+      this.hideHoverPreview();
+    }
+  }
+
+  private positionHoverPreview(mark: HTMLElement) {
+    const markRect = mark.getBoundingClientRect();
+    const wrapperRect = this.wrapper.getBoundingClientRect();
+
+    const top = markRect.bottom - wrapperRect.top + 8;
+    const left = markRect.left - wrapperRect.left;
+
+    this.preview.style.position = "absolute";
+    this.preview.style.top = `${top}px`;
+    this.preview.style.left = `${left}px`;
+  }
+
+  private hideHoverPreview() {
+    this.preview.hidden = true;
+    this.preview.setAttribute("aria-hidden", "true");
+    this.preview.innerHTML = "";
+  }
+
+  private clearHoverTimer() {
+    if (this.hoverPreviewTimeoutId !== undefined) {
+      window.clearTimeout(this.hoverPreviewTimeoutId);
+      this.hoverPreviewTimeoutId = undefined;
+    }
+  }
+
+  static initAll(
+    options: ContentBlockEditorOptions,
+    scope: ParentNode = document,
+  ): ContentBlockEditor[] {
     const elements = scope.querySelectorAll(
       '[data-module~="content-block-highlight"]',
     );
 
     return Array.from(elements).map(
-      (element) => new ContentBlockEditor(element),
+      (element) => new ContentBlockEditor(element, options),
     );
   }
 }

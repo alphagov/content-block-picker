@@ -120,7 +120,9 @@
     </script>
     <script type="module">
       import { ContentBlockEditor } from "/src/content-block-editor.ts";
-      new ContentBlockEditor(document.querySelector(".my-textarea"));
+      new ContentBlockEditor(document.querySelector(".my-textarea"), {
+        baseUrl: "http://localhost:5173/",
+      });
     </script>
     <script type="application/json" id="content-blocks">
       [

@@ -1,7 +1,19 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
 
+const cbmEndpoint =
+  process.env.CBM_ENDPOINT || "http://content-block-manager.dev.gov.uk";
+
 export default defineConfig({
+  server: {
+    proxy: {
+      "/api": {
+        target: cbmEndpoint,
+        changeOrigin: true,
+        secure: false,
+      },
+    },
+  },
   build: {
     lib: {
       entry: resolve(__dirname, "src/content-block-editor.ts"),

@@ -28,3 +28,14 @@ textarea.content-block-highlight__input {
 
   resize: none;
 }
+
+.content-block-highlight__preview {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  max-width: 28rem;
+  padding: 0.75rem;
+  border: 1px solid $govuk-border-colour;
+  background: $govuk-body-background-colour;
+  box-shadow: 0 2px 8px rgb(11 12 12 / 20%);
+}
