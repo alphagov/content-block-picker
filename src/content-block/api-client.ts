@@ -15,14 +15,26 @@ export interface EmbedCodePreview {
  */
 
 import { isValidEmbedCode } from "./regex.ts";
+import type { BlockSearchResponse } from "../@types/block";
 
 export class APIClient {
   private cache = new Map<string, Promise<EmbedCodePreview>>();
   private readonly baseUrl: URL;
-  private readonly RENDER_PATH = "/api/blocks/:embedCode/render";
+  private readonly BLOCKS_PATH = "/api/blocks";
+  private readonly RENDER_PATH = `${this.BLOCKS_PATH}/:embedCode/render`;
 
   constructor(baseUrl: string) {
     this.baseUrl = new URL(baseUrl);
+  }
+
+  fetchBlocksPage(url: string): Promise<BlockSearchResponse> {
+    return fetch(url).then((response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch blocks: ${response.status}`);
+      }
+
+      return response.json() as Promise<BlockSearchResponse>;
+    });
   }
 
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {

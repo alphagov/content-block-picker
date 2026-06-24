@@ -22,6 +22,14 @@ function createErrorResponse(status: number): Response {
   } as unknown as Response;
 }
 
+function createJsonResponse(data: unknown): Response {
+  return {
+    ok: true,
+    status: 200,
+    json: vi.fn().mockResolvedValue(data),
+  } as unknown as Response;
+}
+
 describe("APIClient", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   const baseUrl = "https://example.test";
@@ -44,6 +52,48 @@ describe("APIClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(expectedUrl);
     expect(result).toEqual(expectedPayload);
+  });
+
+  test("it fetches a blocks page and returns parsed JSON", async () => {
+    const client = new APIClient(baseUrl);
+    const url = `${baseUrl}/api/blocks?page=2`;
+    const payload = {
+      total: 1,
+      pages: 1,
+      current_page: 1,
+      links: [],
+      results: [
+        {
+          title: "Sample Contact Block",
+          block_type: "Contact",
+          organisation: {
+            name: "AI Security Institute",
+            content_id: "3a279946-1880-410e-ad4e-eb3cef22e210",
+          },
+          state: "published",
+          embed_code: "{{embed:content_block_contact:sample-contact-1}}",
+          formats: [],
+        },
+      ],
+    };
+
+    fetchMock.mockResolvedValue(createJsonResponse(payload));
+
+    const result = await client.fetchBlocksPage(url);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(url);
+    expect(result).toEqual(payload);
+  });
+
+  test("it throws when fetchBlocksPage receives a non-ok response", async () => {
+    const client = new APIClient(baseUrl);
+
+    fetchMock.mockResolvedValue(createErrorResponse(500));
+
+    await expect(
+      client.fetchBlocksPage(`${baseUrl}/api/blocks`),
+    ).rejects.toThrow("Failed to fetch blocks: 500");
   });
 
   test("it reuses cached requests for the same embed code", async () => {
