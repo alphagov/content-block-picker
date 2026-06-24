@@ -120,9 +120,15 @@
     </script>
     <script type="module">
       import { ContentBlockEditor } from "/src/content-block-editor.ts";
-      new ContentBlockEditor(document.querySelector(".my-textarea"), {
-        baseUrl: "http://localhost:5173/",
-      });
+      const editor = new ContentBlockEditor(
+        document.querySelector(".my-textarea"),
+        {
+          baseUrl: "http://localhost:5173/",
+        },
+      );
+
+      const blocks = await editor.preloadBlocks();
+      console.log("Preloaded blocks:", blocks);
     </script>
     <script type="application/json" id="content-blocks">
       [
