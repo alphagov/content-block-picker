@@ -5,6 +5,7 @@ import {
   makeIframePayload,
 } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
+import type { BlockSearchResult } from "./@types/block";
 
 export interface ContentBlockEditorOptions {
   baseUrl: string;
@@ -21,6 +22,7 @@ export class ContentBlockEditor {
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
   currentMarkUnderCursor: HTMLElement | null = null;
+  preloadedBlocks: BlockSearchResult[] = [];
 
   constructor(element: Element, options: ContentBlockEditorOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -221,6 +223,16 @@ export class ContentBlockEditor {
     if (this.hoverPreviewTimeoutId !== undefined) {
       window.clearTimeout(this.hoverPreviewTimeoutId);
       this.hoverPreviewTimeoutId = undefined;
+    }
+  }
+
+  async preloadBlocks(): Promise<BlockSearchResult[]> {
+    try {
+      this.preloadedBlocks = await this.apiClient.fetchAllBlocks();
+      return this.preloadedBlocks;
+    } catch (error) {
+      console.error("Failed to preload blocks:", error);
+      return [];
     }
   }
 

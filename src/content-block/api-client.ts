@@ -50,7 +50,7 @@ export class APIClient {
     if (!response.ok) {
       throw new Error(`Failed to fetch blocks: ${response.status}`);
     }
-    return await (response.json() as Promise<BlockSearchResponse>);
+    return (await response.json()) as Promise<BlockSearchResponse>;
   }
 
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
