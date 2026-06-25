@@ -19,6 +19,7 @@ export class ContentBlockEditor {
   highlight: HTMLDivElement;
   preview: HTMLIFrameElement;
   apiClient: APIClient;
+  blocks: BlockSearchResult[] = [];
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
   currentMarkUnderCursor: HTMLElement | null = null;
@@ -52,6 +53,16 @@ export class ContentBlockEditor {
     this.textarea.addEventListener("mouseleave", () =>
       this.onTextareaMouseLeave(),
     );
+
+    const insertBlockButton = document.getElementById(
+      "insert-content-block-button",
+    );
+    if (insertBlockButton instanceof HTMLButtonElement) {
+      insertBlockButton.addEventListener("click", () =>
+        this.onInsertBlockButtonClicked(),
+      );
+    }
+
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "resize-preview") {
         if (this.preview instanceof HTMLIFrameElement) {
@@ -144,6 +155,13 @@ export class ContentBlockEditor {
     if (mark) {
       await this.onMarkEnter(mark);
     }
+  }
+
+  async onInsertBlockButtonClicked() {
+    if (this.blocks.length === 0) {
+      this.blocks = await this.preloadBlocks();
+    }
+    console.log("Preloaded blocks:", this.blocks);
   }
 
   onTextareaMouseLeave() {
