@@ -19,10 +19,10 @@ export class ContentBlockEditor {
   highlight: HTMLDivElement;
   preview: HTMLIFrameElement;
   apiClient: APIClient;
+  blocks: BlockSearchResult[] = [];
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
   currentMarkUnderCursor: HTMLElement | null = null;
-  preloadedBlocks: BlockSearchResult[] = [];
 
   constructor(element: Element, options: ContentBlockEditorOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -52,6 +52,16 @@ export class ContentBlockEditor {
     this.textarea.addEventListener("mouseleave", () =>
       this.onTextareaMouseLeave(),
     );
+
+    const insertBlockButton = document.getElementById(
+      "insert-content-block-button",
+    );
+    if (insertBlockButton instanceof HTMLButtonElement) {
+      insertBlockButton.addEventListener("click", () =>
+        this.onInsertBlockButtonClicked(),
+      );
+    }
+
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "resize-preview") {
         if (this.preview instanceof HTMLIFrameElement) {
@@ -146,6 +156,13 @@ export class ContentBlockEditor {
     }
   }
 
+  async onInsertBlockButtonClicked() {
+    if (this.blocks.length === 0) {
+      this.blocks = await this.preloadBlocks();
+    }
+    console.log("Preloaded blocks:", this.blocks);
+  }
+
   onTextareaMouseLeave() {
     this.currentMarkUnderCursor = null;
     this.onMarkLeave();
@@ -228,8 +245,7 @@ export class ContentBlockEditor {
 
   async preloadBlocks(): Promise<BlockSearchResult[]> {
     try {
-      this.preloadedBlocks = await this.apiClient.fetchAllBlocks();
-      return this.preloadedBlocks;
+      return await this.apiClient.fetchAllBlocks();
     } catch (error) {
       console.error("Failed to preload blocks:", error);
       return [];
