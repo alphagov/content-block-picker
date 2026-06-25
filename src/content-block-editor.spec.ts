@@ -243,6 +243,73 @@ describe("ContentBlockPicker", () => {
 
       expect(observeSpy).toHaveBeenCalledWith(textarea);
     });
+
+    test("it wires insert-content-block-button click to onInsertBlockButtonClicked", () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button" type="button">Insert content block</button>
+        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const onInsertSpy = vi.spyOn(
+        ContentBlockEditor.prototype,
+        "onInsertBlockButtonClicked",
+      );
+
+      new ContentBlockEditor(textareaWithButton, { baseUrl });
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      expect(onInsertSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("it starts with empty blocks and populates them when insert button is clicked", async () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button" type="button">Insert content block</button>
+        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const blocksFromApi = [
+        {
+          title: "Test block",
+          block_type: "contact",
+          organisation: {
+            name: "Test org",
+            content_id: "org-1",
+          },
+          state: "published",
+          embed_code: "{{embed:contact:test}}",
+          formats: ["html"],
+        },
+      ];
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      const preloadSpy = vi
+        .spyOn(editorInstance, "preloadBlocks")
+        .mockResolvedValue(blocksFromApi);
+
+      expect(editorInstance.blocks).toEqual([]);
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(preloadSpy).toHaveBeenCalledTimes(1);
+        expect(editorInstance.blocks).toEqual(blocksFromApi);
+      });
+    });
   });
 
   describe("initAll", () => {

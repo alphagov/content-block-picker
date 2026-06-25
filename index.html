@@ -68,6 +68,11 @@
       <main class="govuk-main-wrapper" id="main-content">
         <div id="app">
           <h1 class="govuk-heading-xl">Content Block Editor</h1>
+          <div>
+            <button class="govuk-button" id="insert-content-block-button">
+              Insert content block
+            </button>
+          </div>
           <textarea
             class="my-textarea govuk-textarea"
             data-module="content-block-highlight"
@@ -126,9 +131,6 @@
           baseUrl: "http://localhost:5173/",
         },
       );
-
-      const blocks = await editor.preloadBlocks();
-      console.log("Preloaded blocks:", blocks);
     </script>
     <script type="application/json" id="content-blocks">
       [
