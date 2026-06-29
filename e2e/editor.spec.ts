@@ -113,4 +113,56 @@ test.describe("Content Block Editor", () => {
     await expect(blockItems.nth(0)).toHaveText("First content block");
     await expect(blockItems.nth(1)).toHaveText("Second content block");
   });
+
+  test("it hides the block list overlay when clicked", async ({ page }) => {
+    await page.route("**/api/blocks", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          links: [],
+          results: [{ title: "Test block" }],
+        }),
+      });
+    });
+
+    await page.getByRole("button", { name: "Insert content block" }).click();
+
+    const overlay = page.locator(
+      ".content-block-highlight__block-list-overlay",
+    );
+    await expect(overlay).toBeVisible();
+
+    await overlay.click();
+
+    await expect(overlay).not.toBeVisible();
+    await expect(overlay).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("it hides the block list overlay when Escape key is pressed", async ({
+    page,
+  }) => {
+    await page.route("**/api/blocks", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          links: [],
+          results: [{ title: "Test block" }],
+        }),
+      });
+    });
+
+    await page.getByRole("button", { name: "Insert content block" }).click();
+
+    const overlay = page.locator(
+      ".content-block-highlight__block-list-overlay",
+    );
+    await expect(overlay).toBeVisible();
+
+    await page.keyboard.press("Escape");
+
+    await expect(overlay).not.toBeVisible();
+    await expect(overlay).toHaveAttribute("aria-hidden", "true");
+  });
 });
