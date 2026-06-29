@@ -35,7 +35,6 @@ export class ContentBlockEditor {
     this.wrapper.appendChild(this.preview);
 
     this.blockListOverlay = this.createBlockListOverlay();
-    document.body.appendChild(this.blockListOverlay);
 
     this.blockListOverlay.addEventListener("click", () =>
       this.hideBlockListOverlay(),
@@ -66,12 +65,19 @@ export class ContentBlockEditor {
       this.onTextareaMouseLeave(),
     );
 
-    const insertBlockButton = document.getElementById(
-      "insert-content-block-button",
-    );
-    if (insertBlockButton instanceof HTMLButtonElement) {
-      insertBlockButton.addEventListener("click", () =>
-        this.onInsertBlockButtonClicked(),
+    const insertButtonId = (element as HTMLElement).dataset.insertButtonId
+    if (insertButtonId) {
+      const insertBlockButton = document.getElementById(insertButtonId);
+      if (insertBlockButton instanceof HTMLButtonElement) {
+        insertBlockButton.addEventListener("click", () =>
+            this.onInsertBlockButtonClicked(),
+        );
+      } else {
+        console.warn(`Insert content block button with ID "${insertButtonId}" not found or is not a button, no insert functionality will be supported.`);
+      }
+    } else {
+      console.warn(
+        `No data-insert-button-id provided; insert content block functionality is disabled.`,
       );
     }
 
@@ -132,6 +138,8 @@ export class ContentBlockEditor {
     overlay.setAttribute("role", "dialog");
     overlay.setAttribute("aria-label", "Available content blocks");
     overlay.setAttribute("aria-hidden", "true");
+
+    document.body.appendChild(overlay);
 
     return overlay;
   }

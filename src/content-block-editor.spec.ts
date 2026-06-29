@@ -43,8 +43,13 @@ describe("ContentBlockPicker", () => {
     );
 
     document.body.innerHTML = `
+      <button class="govuk-button" id="insert-content-block-button"> Insert content block </button>
       <div id="container">
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+        <textarea
+          id="my-textarea"
+          data-module="content-block-highlight"
+          data-insert-button-id="insert-content-block-button"
+        ></textarea>
       </div>
     `;
     textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
@@ -286,20 +291,10 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it wires insert-content-block-button click to onInsertBlockButtonClicked", () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button" type="button">Insert content block</button>
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
-      `;
-
-      const textareaWithButton = document.getElementById(
-        "my-textarea",
-      ) as HTMLTextAreaElement;
       const onInsertSpy = vi.spyOn(
-        ContentBlockEditor.prototype,
+        editor,
         "onInsertBlockButtonClicked",
       );
-
-      new ContentBlockEditor(textareaWithButton, { baseUrl });
 
       const insertButton = document.getElementById(
         "insert-content-block-button",
@@ -310,14 +305,6 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it starts with empty blocks and populates them when insert button is clicked", async () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button" type="button">Insert content block</button>
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
-      `;
-
-      const textareaWithButton = document.getElementById(
-        "my-textarea",
-      ) as HTMLTextAreaElement;
       const blocksFromApi = [
         {
           title: "Test block",
@@ -332,14 +319,11 @@ describe("ContentBlockPicker", () => {
         },
       ];
 
-      const editorInstance = new ContentBlockEditor(textareaWithButton, {
-        baseUrl,
-      });
       const preloadSpy = vi
-        .spyOn(editorInstance, "preloadBlocks")
+        .spyOn(editor, "preloadBlocks")
         .mockResolvedValue(blocksFromApi);
 
-      expect(editorInstance.blocks).toEqual([]);
+      expect(editor.blocks).toEqual([]);
 
       const insertButton = document.getElementById(
         "insert-content-block-button",
@@ -348,15 +332,15 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => {
         expect(preloadSpy).toHaveBeenCalledTimes(1);
-        expect(editorInstance.blocks).toEqual(blocksFromApi);
-        expect(editorInstance.blockListOverlay.hidden).toBe(false);
-        expect(editorInstance.blockListOverlay.textContent).toContain(
+        expect(editor.blocks).toEqual(blocksFromApi);
+        expect(editor.blockListOverlay.hidden).toBe(false);
+        expect(editor.blockListOverlay.textContent).toContain(
           "Available content blocks",
         );
-        expect(editorInstance.blockListOverlay.textContent).toContain(
+        expect(editor.blockListOverlay.textContent).toContain(
           "Test block",
         );
-        const formatItems = editorInstance.blockListOverlay.querySelectorAll(
+        const formatItems = editor.blockListOverlay.querySelectorAll(
           ".content-block-highlight__block-format-list-item",
         );
         expect(formatItems).toHaveLength(2);
@@ -366,11 +350,6 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it renders no format list when a block has no formats", async () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button" type="button">Insert content block</button>
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
-      `;
-
       const textareaWithButton = document.getElementById(
         "my-textarea",
       ) as HTMLTextAreaElement;
@@ -410,11 +389,6 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it shows an empty state when no blocks are available", async () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button" type="button">Insert content block</button>
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
-      `;
-
       const textareaWithButton = document.getElementById(
         "my-textarea",
       ) as HTMLTextAreaElement;
@@ -438,11 +412,6 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it hides the block list overlay when clicked", async () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button" type="button">Insert content block</button>
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
-      `;
-
       const textareaWithButton = document.getElementById(
         "my-textarea",
       ) as HTMLTextAreaElement;
@@ -485,11 +454,6 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it hides the block list overlay when Escape key is pressed", async () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button" type="button">Insert content block</button>
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
-      `;
-
       const textareaWithButton = document.getElementById(
         "my-textarea",
       ) as HTMLTextAreaElement;
@@ -534,16 +498,18 @@ describe("ContentBlockPicker", () => {
     });
   });
 
-  describe("initAll", () => {
-    test("it initializes multiple instances based on data-module", () => {
-      document.body.innerHTML = `
-        <textarea data-module="content-block-highlight"></textarea>
-        <textarea data-module="content-block-highlight"></textarea>
-      `;
-      const editors = ContentBlockEditor.initAll({ baseUrl });
-      expect(editors.length).toBe(2);
-      expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
-    });
+   describe("initAll", () => {
+     test("it initializes multiple instances based on data-module", () => {
+       document.body.innerHTML = `
+         <button class="govuk-button" id="insert-content-block-button-one"> Insert content block </button>
+         <button class="govuk-button" id="insert-content-block-button-two"> Insert content block </button>
+         <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-one"></textarea>
+         <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-two"></textarea>
+       `;
+       const editors = ContentBlockEditor.initAll({ baseUrl });
+       expect(editors.length).toBe(2);
+       expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
+     });
 
     test("each instance has its own block list overlay", () => {
       document.body.innerHTML = `
@@ -572,23 +538,24 @@ describe("ContentBlockPicker", () => {
       expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
     });
 
-    test("it passes baseUrl from options to API requests", async () => {
-      const fetchMock = mockSuccessFetch();
-      document.body.innerHTML = `
-        <textarea data-module="content-block-highlight">{{embed:contact:123}}</textarea>
-      `;
+      test("it passes baseUrl from options to API requests", async () => {
+        const fetchMock = mockSuccessFetch();
+        document.body.innerHTML = `
+          <button class="govuk-button" id="insert-content-block-button"> Insert content block </button>
+          <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button">{{embed:contact:123}}</textarea>
+        `;
 
-      const [editorInstance] = ContentBlockEditor.initAll({
-        baseUrl: "https://publisher.test",
+        const [editorInstance] = ContentBlockEditor.initAll({
+          baseUrl: "https://publisher.test",
+        });
+
+        editorInstance.textarea.dispatchEvent(new Event("input"));
+
+        await vi.waitFor(() => {
+          expect(fetchMock).toHaveBeenCalledWith(
+            "https://publisher.test/api/blocks/%7B%7Bembed%3Acontact%3A123%7D%7D/render",
+          );
+        });
       });
-
-      editorInstance.textarea.dispatchEvent(new Event("input"));
-
-      await vi.waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-          "https://publisher.test/api/blocks/%7B%7Bembed%3Acontact%3A123%7D%7D/render",
-        );
-      });
-    });
   });
 });
