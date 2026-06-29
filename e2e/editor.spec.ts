@@ -159,9 +159,34 @@ test.describe("Content Block Editor", () => {
     await expect(overlay).toHaveAttribute("aria-hidden", "true");
   });
 
-  test("it hides the block list overlay when Escape key is pressed", async ({
-    page,
-  }) => {
+   test("it hides the block list overlay when Escape key is pressed", async ({
+     page,
+   }) => {
+     await page.route("**/api/blocks", async (route) => {
+       await route.fulfill({
+         status: 200,
+         contentType: "application/json",
+         body: JSON.stringify({
+           links: [],
+           results: [{ title: "Test block", formats: [] }],
+         }),
+       });
+     });
+
+     await page.getByRole("button", { name: "Insert content block" }).click();
+
+     const overlay = page.locator(
+       ".content-block-highlight__block-list-overlay",
+     );
+     await expect(overlay).toBeVisible();
+
+     await page.keyboard.press("Escape");
+
+    await expect(overlay).not.toBeVisible();
+    await expect(overlay).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("each instance has its own block list overlay", async ({ page }) => {
     await page.route("**/api/blocks", async (route) => {
       await route.fulfill({
         status: 200,
@@ -173,16 +198,33 @@ test.describe("Content Block Editor", () => {
       });
     });
 
-    await page.getByRole("button", { name: "Insert content block" }).click();
+    await page.evaluate(async () => {
+      const modulePath = "/src/content-block-editor.ts";
+      const { ContentBlockEditor } = await import(modulePath);
 
-    const overlay = page.locator(
-      ".content-block-highlight__block-list-overlay",
-    );
-    await expect(overlay).toBeVisible();
+      const secondButton = document.createElement("button");
+      secondButton.id = "insert-content-block-button-two";
+      secondButton.type = "button";
+      secondButton.textContent = "Insert content block two";
+      document.body.appendChild(secondButton);
 
-    await page.keyboard.press("Escape");
+      const secondTextarea = document.createElement("textarea");
+      secondTextarea.setAttribute("data-module", "content-block-highlight");
+      secondTextarea.setAttribute(
+        "data-insert-button-id",
+        "insert-content-block-button-two",
+      );
+      document.body.appendChild(secondTextarea);
 
-    await expect(overlay).not.toBeVisible();
-    await expect(overlay).toHaveAttribute("aria-hidden", "true");
+      new ContentBlockEditor(secondTextarea, { baseUrl: window.location.origin });
+    });
+
+    await page.locator("#insert-content-block-button").click();
+    await page.locator("#insert-content-block-button-two").click();
+
+    const overlays = page.locator(".content-block-highlight__block-list-overlay");
+    await expect(overlays).toHaveCount(2);
+    await expect(overlays.nth(0)).toBeVisible();
+    await expect(overlays.nth(1)).toBeVisible();
   });
 });
