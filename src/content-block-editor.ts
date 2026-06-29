@@ -38,6 +38,15 @@ export class ContentBlockEditor {
     this.blockListOverlay = this.createBlockListOverlay();
     document.body.appendChild(this.blockListOverlay);
 
+    this.blockListOverlay.addEventListener("click", () =>
+      this.hideBlockListOverlay(),
+    );
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        this.hideBlockListOverlay();
+      }
+    });
+
     const baseUrl = options.baseUrl;
     this.apiClient = new APIClient(baseUrl);
 
@@ -255,6 +264,12 @@ export class ContentBlockEditor {
     this.preview.hidden = true;
     this.preview.setAttribute("aria-hidden", "true");
     this.preview.innerHTML = "";
+  }
+
+  private hideBlockListOverlay() {
+    this.blockListOverlay.hidden = true;
+    this.blockListOverlay.setAttribute("aria-hidden", "true");
+    this.blockListOverlay.replaceChildren();
   }
 
   private clearHoverTimer() {

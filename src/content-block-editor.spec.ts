@@ -386,6 +386,102 @@ describe("ContentBlockPicker", () => {
         );
       });
     });
+
+    test("it hides the block list overlay when clicked", async () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button" type="button">Insert content block</button>
+        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const blocksFromApi = [
+        {
+          title: "Test block",
+          block_type: "contact",
+          organisation: {
+            name: "Test org",
+            content_id: "org-1",
+          },
+          state: "published",
+          embed_code: "{{embed:contact:test}}",
+          formats: ["html"],
+        },
+      ];
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      vi.spyOn(editorInstance, "preloadBlocks").mockResolvedValue(
+        blocksFromApi,
+      );
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+      });
+
+      editorInstance.blockListOverlay.dispatchEvent(new MouseEvent("click"));
+
+      expect(editorInstance.blockListOverlay.hidden).toBe(true);
+      expect(editorInstance.blockListOverlay.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    });
+
+    test("it hides the block list overlay when Escape key is pressed", async () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button" type="button">Insert content block</button>
+        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const blocksFromApi = [
+        {
+          title: "Test block",
+          block_type: "contact",
+          organisation: {
+            name: "Test org",
+            content_id: "org-1",
+          },
+          state: "published",
+          embed_code: "{{embed:contact:test}}",
+          formats: ["html"],
+        },
+      ];
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      vi.spyOn(editorInstance, "preloadBlocks").mockResolvedValue(
+        blocksFromApi,
+      );
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+      });
+
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+
+      expect(editorInstance.blockListOverlay.hidden).toBe(true);
+      expect(editorInstance.blockListOverlay.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    });
   });
 
   describe("initAll", () => {
