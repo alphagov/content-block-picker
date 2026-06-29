@@ -39,3 +39,30 @@ textarea.content-block-highlight__input {
   background: $govuk-body-background-colour;
   box-shadow: 0 2px 8px rgb(11 12 12 / 20%);
 }
+
+.content-block-highlight__block-list-overlay {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 999;
+  width: min(24rem, calc(100vw - 3rem));
+  max-height: calc(100vh - 3rem);
+  padding: 1rem;
+  overflow-y: auto;
+  border: 1px solid $govuk-border-colour;
+  background: $govuk-body-background-colour;
+  box-shadow: 0 4px 16px rgb(11 12 12 / 20%);
+}
+
+.content-block-highlight__block-list-title {
+  margin: 0 0 0.75rem;
+}
+
+.content-block-highlight__block-list,
+.content-block-highlight__block-list-empty-state {
+  margin: 0;
+}
+
+.content-block-highlight__block-list {
+  padding-left: 1.25rem;
+}

@@ -1,4 +1,4 @@
-import { expect, test, describe, beforeEach, vi } from "vitest";
+import { expect, test, describe, beforeEach, afterEach, vi } from "vitest";
 import { ContentBlockEditor } from "./content-block-editor.ts";
 
 describe("ContentBlockPicker", () => {
@@ -8,6 +8,12 @@ describe("ContentBlockPicker", () => {
   const embedPreviewDelayMs = 314;
   const baseUrl = "http://not-used.test";
 
+  /**
+   * Re-stubs global fetch for tests that need to assert calls against a dedicated spy.
+   *
+   * This intentionally overrides the default fetch stub set in beforeEach because
+   * vi.stubGlobal replaces the current global value for the rest of the test.
+   */
   function mockSuccessFetch() {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -20,6 +26,22 @@ describe("ContentBlockPicker", () => {
   }
 
   beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: vi.fn().mockResolvedValue("<p>Rendered</p>"),
+        json: vi.fn().mockResolvedValue({
+          total: 0,
+          pages: 1,
+          current_page: 1,
+          links: [],
+          results: [],
+        }),
+      } as unknown as Response),
+    );
+
     document.body.innerHTML = `
       <div id="container">
         <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
@@ -27,6 +49,11 @@ describe("ContentBlockPicker", () => {
     `;
     textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
     editor = new ContentBlockEditor(textarea, { baseUrl, embedPreviewDelayMs });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe("initializeModule", () => {
@@ -75,6 +102,19 @@ describe("ContentBlockPicker", () => {
       expect(preview).toBeInstanceOf(HTMLIFrameElement);
       expect(preview.className).toContain("content-block-highlight__preview");
       expect(editor.wrapper.contains(preview)).toBe(true);
+    });
+  });
+
+  describe("createBlockListOverlay", () => {
+    test("it creates a hidden overlay attached to the page", () => {
+      const overlay = editor.blockListOverlay;
+
+      expect(overlay.className).toContain(
+        "content-block-highlight__block-list-overlay",
+      );
+      expect(overlay.hidden).toBe(true);
+      expect(overlay.getAttribute("aria-hidden")).toBe("true");
+      expect(document.body.contains(overlay)).toBe(true);
     });
   });
 
@@ -213,6 +253,7 @@ describe("ContentBlockPicker", () => {
       ).toBe(true);
 
       expect(editorInstance.preview).toBeInstanceOf(HTMLIFrameElement);
+      expect(editorInstance.blockListOverlay).toBeInstanceOf(HTMLDivElement);
       expect(editorInstance.embedPreviewDelayMs).toBe(embedPreviewDelayMs);
     });
 
@@ -308,6 +349,41 @@ describe("ContentBlockPicker", () => {
       await vi.waitFor(() => {
         expect(preloadSpy).toHaveBeenCalledTimes(1);
         expect(editorInstance.blocks).toEqual(blocksFromApi);
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+        expect(editorInstance.blockListOverlay.textContent).toContain(
+          "Available content blocks",
+        );
+        expect(editorInstance.blockListOverlay.textContent).toContain(
+          "Test block",
+        );
+      });
+    });
+
+    test("it shows an empty state when no blocks are available", async () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button" type="button">Insert content block</button>
+        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      vi.spyOn(editorInstance, "preloadBlocks").mockResolvedValue([]);
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+        expect(editorInstance.blockListOverlay.textContent).toContain(
+          "No content blocks available.",
+        );
       });
     });
   });
@@ -321,6 +397,24 @@ describe("ContentBlockPicker", () => {
       const editors = ContentBlockEditor.initAll({ baseUrl });
       expect(editors.length).toBe(2);
       expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
+    });
+
+    test("each instance has its own block list overlay", () => {
+      document.body.innerHTML = `
+         <button class="govuk-button" id="insert-content-block-button-one"> Insert content block </button>
+         <button class="govuk-button" id="insert-content-block-button-two"> Insert content block </button>
+         <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-one"></textarea>
+         <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-two"></textarea>
+       `;
+      const editors = ContentBlockEditor.initAll({ baseUrl });
+
+      expect(editors.length).toBe(2);
+      expect(editors[0].blockListOverlay).not.toBe(editors[1].blockListOverlay);
+      expect(
+        document.querySelectorAll(
+          ".content-block-highlight__block-list-overlay",
+        ).length,
+      ).toBe(2);
     });
 
     test("it initializes given a data module with multiple values", () => {

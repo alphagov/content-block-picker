@@ -78,4 +78,39 @@ test.describe("Content Block Editor", () => {
     expect(html).toContain("&lt;b&gt;Bold&lt;/b&gt;");
     expect(html).toContain('<mark class="content-block-highlight__mark">');
   });
+
+  test("it renders the block list overlay", async ({ page }) => {
+    await page.route("**/api/blocks", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          links: [],
+          results: [
+            { title: "First content block" },
+            { title: "Second content block" },
+          ],
+        }),
+      });
+    });
+
+    await page.getByRole("button", { name: "Insert content block" }).click();
+
+    const overlay = page.locator(
+      ".content-block-highlight__block-list-overlay",
+    );
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toHaveAttribute("aria-hidden", "false");
+
+    await expect(
+      overlay.locator(".content-block-highlight__block-list-title"),
+    ).toHaveText("Available content blocks");
+
+    const blockItems = overlay.locator(
+      ".content-block-highlight__block-list-item",
+    );
+    await expect(blockItems).toHaveCount(2);
+    await expect(blockItems.nth(0)).toHaveText("First content block");
+    await expect(blockItems.nth(1)).toHaveText("Second content block");
+  });
 });

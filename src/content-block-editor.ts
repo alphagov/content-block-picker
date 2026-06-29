@@ -18,6 +18,7 @@ export class ContentBlockEditor {
   wrapper: HTMLDivElement;
   highlight: HTMLDivElement;
   preview: HTMLIFrameElement;
+  blockListOverlay: HTMLDivElement;
   apiClient: APIClient;
   blocks: BlockSearchResult[] = [];
   hoverPreviewTimeoutId?: number;
@@ -33,6 +34,9 @@ export class ContentBlockEditor {
 
     this.preview = createHoverPreviewElement();
     this.wrapper.appendChild(this.preview);
+
+    this.blockListOverlay = this.createBlockListOverlay();
+    document.body.appendChild(this.blockListOverlay);
 
     const baseUrl = options.baseUrl;
     this.apiClient = new APIClient(baseUrl);
@@ -113,6 +117,19 @@ export class ContentBlockEditor {
     return highlight;
   }
 
+  createBlockListOverlay(): HTMLDivElement {
+    const overlay = document.createElement("div");
+    overlay.className = "content-block-highlight__block-list-overlay";
+    overlay.hidden = true;
+    overlay.tabIndex = -1;
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Available content blocks");
+    overlay.setAttribute("aria-hidden", "true");
+
+    return overlay;
+  }
+
   updateHighlight() {
     let text = this.textarea.value;
 
@@ -163,7 +180,8 @@ export class ContentBlockEditor {
       this.blocks = await this.blocksPromise;
       this.blocksPromise = undefined;
     }
-    console.log("Preloaded blocks:", this.blocks);
+
+    this.renderBlockListOverlay();
   }
 
   onTextareaMouseLeave() {
@@ -244,6 +262,39 @@ export class ContentBlockEditor {
       window.clearTimeout(this.hoverPreviewTimeoutId);
       this.hoverPreviewTimeoutId = undefined;
     }
+  }
+
+  private renderBlockListOverlay() {
+    const heading = document.createElement("h2");
+    heading.className = "content-block-highlight__block-list-title";
+    heading.textContent = "Available content blocks";
+
+    const content = document.createElement("div");
+    content.className = "content-block-highlight__block-list-content";
+
+    if (this.blocks.length === 0) {
+      const emptyState = document.createElement("p");
+      emptyState.className = "content-block-highlight__block-list-empty-state";
+      emptyState.textContent = "No content blocks available.";
+      content.appendChild(emptyState);
+    } else {
+      const list = document.createElement("ul");
+      list.className = "content-block-highlight__block-list";
+
+      for (const block of this.blocks) {
+        const listItem = document.createElement("li");
+        listItem.className = "content-block-highlight__block-list-item";
+        listItem.textContent = block.title;
+        list.appendChild(listItem);
+      }
+
+      content.appendChild(list);
+    }
+
+    this.blockListOverlay.replaceChildren(heading, content);
+    this.blockListOverlay.hidden = false;
+    this.blockListOverlay.setAttribute("aria-hidden", "false");
+    this.blockListOverlay.focus();
   }
 
   async preloadBlocks(): Promise<BlockSearchResult[]> {
