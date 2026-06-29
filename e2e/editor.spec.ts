@@ -87,8 +87,11 @@ test.describe("Content Block Editor", () => {
         body: JSON.stringify({
           links: [],
           results: [
-            { title: "First content block" },
-            { title: "Second content block" },
+            {
+              title: "First content block",
+              formats: ["long_form", "short_form"],
+            },
+            { title: "Second content block", formats: [] },
           ],
         }),
       });
@@ -110,8 +113,25 @@ test.describe("Content Block Editor", () => {
       ".content-block-highlight__block-list-item",
     );
     await expect(blockItems).toHaveCount(2);
-    await expect(blockItems.nth(0)).toHaveText("First content block");
-    await expect(blockItems.nth(1)).toHaveText("Second content block");
+
+    const blockTitles = overlay.locator(
+      ".content-block-highlight__block-list-item-title",
+    );
+    await expect(blockTitles).toHaveCount(2);
+    await expect(blockTitles.nth(0)).toHaveText("First content block");
+    await expect(blockTitles.nth(1)).toHaveText("Second content block");
+
+    const firstBlockFormats = blockItems
+      .nth(0)
+      .locator(".content-block-highlight__block-format-list-item");
+    await expect(firstBlockFormats).toHaveCount(2);
+    await expect(firstBlockFormats.nth(0)).toHaveText("long_form");
+    await expect(firstBlockFormats.nth(1)).toHaveText("short_form");
+
+    const secondBlockFormats = blockItems
+      .nth(1)
+      .locator(".content-block-highlight__block-format-list-item");
+    await expect(secondBlockFormats).toHaveCount(0);
   });
 
   test("it hides the block list overlay when clicked", async ({ page }) => {
@@ -121,7 +141,7 @@ test.describe("Content Block Editor", () => {
         contentType: "application/json",
         body: JSON.stringify({
           links: [],
-          results: [{ title: "Test block" }],
+          results: [{ title: "Test block", formats: [] }],
         }),
       });
     });
@@ -148,7 +168,7 @@ test.describe("Content Block Editor", () => {
         contentType: "application/json",
         body: JSON.stringify({
           links: [],
-          results: [{ title: "Test block" }],
+          results: [{ title: "Test block", formats: [] }],
         }),
       });
     });
