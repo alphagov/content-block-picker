@@ -274,6 +274,45 @@ export class ContentBlockEditor {
     }
   }
 
+  private createBlockFormatsList(
+    block: BlockSearchResult,
+  ): HTMLUListElement | null {
+    if (block.formats.length === 0) {
+      return null;
+    }
+
+    const formatsList = document.createElement("ul");
+    formatsList.className = "content-block-highlight__block-format-list";
+
+    for (const format of block.formats) {
+      const formatListItem = document.createElement("li");
+      formatListItem.className =
+        "content-block-highlight__block-format-list-item";
+      formatListItem.textContent = format;
+      formatsList.appendChild(formatListItem);
+    }
+
+    return formatsList;
+  }
+
+  private createBlockListItem(block: BlockSearchResult): HTMLLIElement {
+    const listItem = document.createElement("li");
+    listItem.className = "content-block-highlight__block-list-item";
+
+    const title = document.createElement("span");
+    title.className = "content-block-highlight__block-list-item-title";
+    title.textContent = block.title;
+
+    listItem.appendChild(title);
+
+    const formatsList = this.createBlockFormatsList(block);
+    if (formatsList) {
+      listItem.appendChild(formatsList);
+    }
+
+    return listItem;
+  }
+
   private renderBlockListOverlay() {
     const heading = document.createElement("h2");
     heading.className = "content-block-highlight__block-list-title";
@@ -292,10 +331,7 @@ export class ContentBlockEditor {
       list.className = "content-block-highlight__block-list";
 
       for (const block of this.blocks) {
-        const listItem = document.createElement("li");
-        listItem.className = "content-block-highlight__block-list-item";
-        listItem.textContent = block.title;
-        list.appendChild(listItem);
+        list.appendChild(this.createBlockListItem(block));
       }
 
       content.appendChild(list);

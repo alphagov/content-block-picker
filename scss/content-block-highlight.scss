@@ -66,3 +66,18 @@ textarea.content-block-highlight__input {
 .content-block-highlight__block-list {
   padding-left: 1.25rem;
 }
+
+.content-block-highlight__block-list-item
+  + .content-block-highlight__block-list-item {
+  margin-top: 0.75rem;
+}
+
+.content-block-highlight__block-list-item-title {
+  display: block;
+  font-weight: bold;
+}
+
+.content-block-highlight__block-format-list {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
