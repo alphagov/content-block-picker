@@ -328,7 +328,7 @@ describe("ContentBlockPicker", () => {
           },
           state: "published",
           embed_code: "{{embed:contact:test}}",
-          formats: ["html"],
+          formats: ["long_form", "short_form"],
         },
       ];
 
@@ -356,6 +356,56 @@ describe("ContentBlockPicker", () => {
         expect(editorInstance.blockListOverlay.textContent).toContain(
           "Test block",
         );
+        const formatItems = editorInstance.blockListOverlay.querySelectorAll(
+          ".content-block-highlight__block-format-list-item",
+        );
+        expect(formatItems).toHaveLength(2);
+        expect(formatItems[0]?.textContent).toBe("long_form");
+        expect(formatItems[1]?.textContent).toBe("short_form");
+      });
+    });
+
+    test("it renders no format list when a block has no formats", async () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button" type="button">Insert content block</button>
+        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const blocksFromApi = [
+        {
+          title: "Unformatted block",
+          block_type: "contact",
+          organisation: {
+            name: "Test org",
+            content_id: "org-1",
+          },
+          state: "published",
+          embed_code: "{{embed:contact:test}}",
+          formats: [],
+        },
+      ];
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      vi.spyOn(editorInstance, "preloadBlocks").mockResolvedValue(
+        blocksFromApi,
+      );
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+        const formatItems = editorInstance.blockListOverlay.querySelectorAll(
+          ".content-block-highlight__block-format-list-item",
+        );
+        expect(formatItems).toHaveLength(0);
       });
     });
 
@@ -406,7 +456,7 @@ describe("ContentBlockPicker", () => {
           },
           state: "published",
           embed_code: "{{embed:contact:test}}",
-          formats: ["html"],
+          formats: ["short_form"],
         },
       ];
 
@@ -453,7 +503,7 @@ describe("ContentBlockPicker", () => {
           },
           state: "published",
           embed_code: "{{embed:contact:test}}",
-          formats: ["html"],
+          formats: ["short_form"],
         },
       ];
 
