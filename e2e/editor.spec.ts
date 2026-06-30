@@ -159,28 +159,28 @@ test.describe("Content Block Editor", () => {
     await expect(overlay).toHaveAttribute("aria-hidden", "true");
   });
 
-   test("it hides the block list overlay when Escape key is pressed", async ({
-     page,
-   }) => {
-     await page.route("**/api/blocks", async (route) => {
-       await route.fulfill({
-         status: 200,
-         contentType: "application/json",
-         body: JSON.stringify({
-           links: [],
-           results: [{ title: "Test block", formats: [] }],
-         }),
-       });
-     });
+  test("it hides the block list overlay when Escape key is pressed", async ({
+    page,
+  }) => {
+    await page.route("**/api/blocks", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          links: [],
+          results: [{ title: "Test block", formats: [] }],
+        }),
+      });
+    });
 
-     await page.getByRole("button", { name: "Insert content block" }).click();
+    await page.getByRole("button", { name: "Insert content block" }).click();
 
-     const overlay = page.locator(
-       ".content-block-highlight__block-list-overlay",
-     );
-     await expect(overlay).toBeVisible();
+    const overlay = page.locator(
+      ".content-block-highlight__block-list-overlay",
+    );
+    await expect(overlay).toBeVisible();
 
-     await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
 
     await expect(overlay).not.toBeVisible();
     await expect(overlay).toHaveAttribute("aria-hidden", "true");
