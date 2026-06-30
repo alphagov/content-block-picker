@@ -65,15 +65,17 @@ export class ContentBlockEditor {
       this.onTextareaMouseLeave(),
     );
 
-    const insertButtonId = (element as HTMLElement).dataset.insertButtonId
+    const insertButtonId = (element as HTMLElement).dataset.insertButtonId;
     if (insertButtonId) {
       const insertBlockButton = document.getElementById(insertButtonId);
       if (insertBlockButton instanceof HTMLButtonElement) {
         insertBlockButton.addEventListener("click", () =>
-            this.onInsertBlockButtonClicked(),
+          this.onInsertBlockButtonClicked(),
         );
       } else {
-        console.warn(`Insert content block button with ID "${insertButtonId}" not found or is not a button, no insert functionality will be supported.`);
+        console.warn(
+          `Insert content block button with ID "${insertButtonId}" not found or is not a button, no insert functionality will be supported.`,
+        );
       }
     } else {
       console.warn(

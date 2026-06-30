@@ -291,10 +291,7 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it wires insert-content-block-button click to onInsertBlockButtonClicked", () => {
-      const onInsertSpy = vi.spyOn(
-        editor,
-        "onInsertBlockButtonClicked",
-      );
+      const onInsertSpy = vi.spyOn(editor, "onInsertBlockButtonClicked");
 
       const insertButton = document.getElementById(
         "insert-content-block-button",
@@ -337,9 +334,7 @@ describe("ContentBlockPicker", () => {
         expect(editor.blockListOverlay.textContent).toContain(
           "Available content blocks",
         );
-        expect(editor.blockListOverlay.textContent).toContain(
-          "Test block",
-        );
+        expect(editor.blockListOverlay.textContent).toContain("Test block");
         const formatItems = editor.blockListOverlay.querySelectorAll(
           ".content-block-highlight__block-format-list-item",
         );
@@ -498,18 +493,18 @@ describe("ContentBlockPicker", () => {
     });
   });
 
-   describe("initAll", () => {
-     test("it initializes multiple instances based on data-module", () => {
-       document.body.innerHTML = `
+  describe("initAll", () => {
+    test("it initializes multiple instances based on data-module", () => {
+      document.body.innerHTML = `
          <button class="govuk-button" id="insert-content-block-button-one"> Insert content block </button>
          <button class="govuk-button" id="insert-content-block-button-two"> Insert content block </button>
          <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-one"></textarea>
          <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-two"></textarea>
        `;
-       const editors = ContentBlockEditor.initAll({ baseUrl });
-       expect(editors.length).toBe(2);
-       expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
-     });
+      const editors = ContentBlockEditor.initAll({ baseUrl });
+      expect(editors.length).toBe(2);
+      expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
+    });
 
     test("each instance has its own block list overlay", () => {
       document.body.innerHTML = `
@@ -538,24 +533,24 @@ describe("ContentBlockPicker", () => {
       expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
     });
 
-      test("it passes baseUrl from options to API requests", async () => {
-        const fetchMock = mockSuccessFetch();
-        document.body.innerHTML = `
+    test("it passes baseUrl from options to API requests", async () => {
+      const fetchMock = mockSuccessFetch();
+      document.body.innerHTML = `
           <button class="govuk-button" id="insert-content-block-button"> Insert content block </button>
           <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button">{{embed:contact:123}}</textarea>
         `;
 
-        const [editorInstance] = ContentBlockEditor.initAll({
-          baseUrl: "https://publisher.test",
-        });
-
-        editorInstance.textarea.dispatchEvent(new Event("input"));
-
-        await vi.waitFor(() => {
-          expect(fetchMock).toHaveBeenCalledWith(
-            "https://publisher.test/api/blocks/%7B%7Bembed%3Acontact%3A123%7D%7D/render",
-          );
-        });
+      const [editorInstance] = ContentBlockEditor.initAll({
+        baseUrl: "https://publisher.test",
       });
+
+      editorInstance.textarea.dispatchEvent(new Event("input"));
+
+      await vi.waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledWith(
+          "https://publisher.test/api/blocks/%7B%7Bembed%3Acontact%3A123%7D%7D/render",
+        );
+      });
+    });
   });
 });
