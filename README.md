@@ -42,10 +42,18 @@ It works by overlaying a transparent textarea on top of a styled `<div>` that co
 
 ### Usage
 
-To initialise the picker on a textarea, add the `data-module="content-block-highlight"` attribute:
+To initialise the picker on a textarea, add the `data-module="content-block-highlight"` attribute. If you want to wire in a button to trigger the block list, add the `data-insert-button-id` attribute with the ID of the button.
 
 ```html
-<textarea data-module="content-block-highlight"></textarea>
+<button class="govuk-button" id="insert-content-block-button">
+  Insert content block
+</button>
+...
+<textarea
+  class="my-textarea govuk-textarea"
+  data-module="content-block-highlight"
+  data-insert-button-id="insert-content-block-button"
+></textarea>
 ```
 
 Then initialise the Javascript:
