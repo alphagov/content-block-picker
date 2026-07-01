@@ -1,4 +1,4 @@
-import { expect, test, describe, beforeEach, vi } from "vitest";
+import { expect, test, describe, beforeEach, afterEach, vi } from "vitest";
 import { ContentBlockEditor } from "./content-block-editor.ts";
 
 describe("ContentBlockPicker", () => {
@@ -8,6 +8,12 @@ describe("ContentBlockPicker", () => {
   const embedPreviewDelayMs = 314;
   const baseUrl = "http://not-used.test";
 
+  /**
+   * Re-stubs global fetch for tests that need to assert calls against a dedicated spy.
+   *
+   * This intentionally overrides the default fetch stub set in beforeEach because
+   * vi.stubGlobal replaces the current global value for the rest of the test.
+   */
   function mockSuccessFetch() {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -20,13 +26,39 @@ describe("ContentBlockPicker", () => {
   }
 
   beforeEach(() => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: vi.fn().mockResolvedValue("<p>Rendered</p>"),
+        json: vi.fn().mockResolvedValue({
+          total: 0,
+          pages: 1,
+          current_page: 1,
+          links: [],
+          results: [],
+        }),
+      } as unknown as Response),
+    );
+
     document.body.innerHTML = `
+      <button class="govuk-button" id="insert-content-block-button"> Insert content block </button>
       <div id="container">
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+        <textarea
+          id="my-textarea"
+          data-module="content-block-highlight"
+          data-insert-button-id="insert-content-block-button"
+        ></textarea>
       </div>
     `;
     textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
     editor = new ContentBlockEditor(textarea, { baseUrl, embedPreviewDelayMs });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe("initializeModule", () => {
@@ -75,6 +107,19 @@ describe("ContentBlockPicker", () => {
       expect(preview).toBeInstanceOf(HTMLIFrameElement);
       expect(preview.className).toContain("content-block-highlight__preview");
       expect(editor.wrapper.contains(preview)).toBe(true);
+    });
+  });
+
+  describe("createBlockListOverlay", () => {
+    test("it creates a hidden overlay attached to the page", () => {
+      const overlay = editor.blockListOverlay;
+
+      expect(overlay.className).toContain(
+        "content-block-highlight__block-list-overlay",
+      );
+      expect(overlay.hidden).toBe(true);
+      expect(overlay.getAttribute("aria-hidden")).toBe("true");
+      expect(document.body.contains(overlay)).toBe(true);
     });
   });
 
@@ -213,6 +258,7 @@ describe("ContentBlockPicker", () => {
       ).toBe(true);
 
       expect(editorInstance.preview).toBeInstanceOf(HTMLIFrameElement);
+      expect(editorInstance.blockListOverlay).toBeInstanceOf(HTMLDivElement);
       expect(editorInstance.embedPreviewDelayMs).toBe(embedPreviewDelayMs);
     });
 
@@ -243,17 +289,239 @@ describe("ContentBlockPicker", () => {
 
       expect(observeSpy).toHaveBeenCalledWith(textarea);
     });
+
+    test("it wires insert-content-block-button click to onInsertBlockButtonClicked", () => {
+      const onInsertSpy = vi.spyOn(editor, "onInsertBlockButtonClicked");
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      expect(onInsertSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("it starts with empty blocks and populates them when insert button is clicked", async () => {
+      const blocksFromApi = [
+        {
+          title: "Test block",
+          block_type: "contact",
+          organisation: {
+            name: "Test org",
+            content_id: "org-1",
+          },
+          state: "published",
+          embed_code: "{{embed:contact:test}}",
+          formats: ["long_form", "short_form"],
+        },
+      ];
+
+      const preloadSpy = vi
+        .spyOn(editor, "preloadBlocks")
+        .mockResolvedValue(blocksFromApi);
+
+      expect(editor.blocks).toEqual([]);
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(preloadSpy).toHaveBeenCalledTimes(1);
+        expect(editor.blocks).toEqual(blocksFromApi);
+        expect(editor.blockListOverlay.hidden).toBe(false);
+        expect(editor.blockListOverlay.textContent).toContain(
+          "Available content blocks",
+        );
+        expect(editor.blockListOverlay.textContent).toContain("Test block");
+        const formatItems = editor.blockListOverlay.querySelectorAll(
+          ".content-block-highlight__block-format-list-item",
+        );
+        expect(formatItems).toHaveLength(2);
+        expect(formatItems[0]?.textContent).toBe("long_form");
+        expect(formatItems[1]?.textContent).toBe("short_form");
+      });
+    });
+
+    test("it renders no format list when a block has no formats", async () => {
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const blocksFromApi = [
+        {
+          title: "Unformatted block",
+          block_type: "contact",
+          organisation: {
+            name: "Test org",
+            content_id: "org-1",
+          },
+          state: "published",
+          embed_code: "{{embed:contact:test}}",
+          formats: [],
+        },
+      ];
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      vi.spyOn(editorInstance, "preloadBlocks").mockResolvedValue(
+        blocksFromApi,
+      );
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+        const formatItems = editorInstance.blockListOverlay.querySelectorAll(
+          ".content-block-highlight__block-format-list-item",
+        );
+        expect(formatItems).toHaveLength(0);
+      });
+    });
+
+    test("it shows an empty state when no blocks are available", async () => {
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      vi.spyOn(editorInstance, "preloadBlocks").mockResolvedValue([]);
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+        expect(editorInstance.blockListOverlay.textContent).toContain(
+          "No content blocks available.",
+        );
+      });
+    });
+
+    test("it hides the block list overlay when clicked", async () => {
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const blocksFromApi = [
+        {
+          title: "Test block",
+          block_type: "contact",
+          organisation: {
+            name: "Test org",
+            content_id: "org-1",
+          },
+          state: "published",
+          embed_code: "{{embed:contact:test}}",
+          formats: ["short_form"],
+        },
+      ];
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      vi.spyOn(editorInstance, "preloadBlocks").mockResolvedValue(
+        blocksFromApi,
+      );
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+      });
+
+      editorInstance.blockListOverlay.dispatchEvent(new MouseEvent("click"));
+
+      expect(editorInstance.blockListOverlay.hidden).toBe(true);
+      expect(editorInstance.blockListOverlay.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    });
+
+    test("it hides the block list overlay when Escape key is pressed", async () => {
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const blocksFromApi = [
+        {
+          title: "Test block",
+          block_type: "contact",
+          organisation: {
+            name: "Test org",
+            content_id: "org-1",
+          },
+          state: "published",
+          embed_code: "{{embed:contact:test}}",
+          formats: ["short_form"],
+        },
+      ];
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+      vi.spyOn(editorInstance, "preloadBlocks").mockResolvedValue(
+        blocksFromApi,
+      );
+
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListOverlay.hidden).toBe(false);
+      });
+
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+
+      expect(editorInstance.blockListOverlay.hidden).toBe(true);
+      expect(editorInstance.blockListOverlay.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    });
   });
 
   describe("initAll", () => {
     test("it initializes multiple instances based on data-module", () => {
       document.body.innerHTML = `
-        <textarea data-module="content-block-highlight"></textarea>
-        <textarea data-module="content-block-highlight"></textarea>
-      `;
+         <button class="govuk-button" id="insert-content-block-button-one"> Insert content block </button>
+         <button class="govuk-button" id="insert-content-block-button-two"> Insert content block </button>
+         <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-one"></textarea>
+         <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-two"></textarea>
+       `;
       const editors = ContentBlockEditor.initAll({ baseUrl });
       expect(editors.length).toBe(2);
       expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
+    });
+
+    test("each instance has its own block list overlay", () => {
+      document.body.innerHTML = `
+         <button class="govuk-button" id="insert-content-block-button-one"> Insert content block </button>
+         <button class="govuk-button" id="insert-content-block-button-two"> Insert content block </button>
+         <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-one"></textarea>
+         <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button-two"></textarea>
+       `;
+      const editors = ContentBlockEditor.initAll({ baseUrl });
+
+      expect(editors.length).toBe(2);
+      expect(editors[0].blockListOverlay).not.toBe(editors[1].blockListOverlay);
+      expect(
+        document.querySelectorAll(
+          ".content-block-highlight__block-list-overlay",
+        ).length,
+      ).toBe(2);
     });
 
     test("it initializes given a data module with multiple values", () => {
@@ -268,8 +536,9 @@ describe("ContentBlockPicker", () => {
     test("it passes baseUrl from options to API requests", async () => {
       const fetchMock = mockSuccessFetch();
       document.body.innerHTML = `
-        <textarea data-module="content-block-highlight">{{embed:contact:123}}</textarea>
-      `;
+          <button class="govuk-button" id="insert-content-block-button"> Insert content block </button>
+          <textarea data-module="content-block-highlight" data-insert-button-id="insert-content-block-button">{{embed:contact:123}}</textarea>
+        `;
 
       const [editorInstance] = ContentBlockEditor.initAll({
         baseUrl: "https://publisher.test",

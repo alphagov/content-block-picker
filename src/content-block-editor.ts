@@ -5,6 +5,7 @@ import {
   makeIframePayload,
 } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
+import type { BlockSearchResult } from "./@types/block";
 
 export interface ContentBlockEditorOptions {
   baseUrl: string;
@@ -17,10 +18,13 @@ export class ContentBlockEditor {
   wrapper: HTMLDivElement;
   highlight: HTMLDivElement;
   preview: HTMLIFrameElement;
+  blockListOverlay: HTMLDivElement;
   apiClient: APIClient;
+  blocks: BlockSearchResult[] = [];
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
   currentMarkUnderCursor: HTMLElement | null = null;
+  private blocksPromise?: Promise<BlockSearchResult[]>;
 
   constructor(element: Element, options: ContentBlockEditorOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -30,6 +34,17 @@ export class ContentBlockEditor {
 
     this.preview = createHoverPreviewElement();
     this.wrapper.appendChild(this.preview);
+
+    this.blockListOverlay = this.createBlockListOverlay();
+
+    this.blockListOverlay.addEventListener("click", () =>
+      this.hideBlockListOverlay(),
+    );
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        this.hideBlockListOverlay();
+      }
+    });
 
     const baseUrl = options.baseUrl;
     this.apiClient = new APIClient(baseUrl);
@@ -50,6 +65,25 @@ export class ContentBlockEditor {
     this.textarea.addEventListener("mouseleave", () =>
       this.onTextareaMouseLeave(),
     );
+
+    const insertButtonId = (element as HTMLElement).dataset.insertButtonId;
+    if (insertButtonId) {
+      const insertBlockButton = document.getElementById(insertButtonId);
+      if (insertBlockButton instanceof HTMLButtonElement) {
+        insertBlockButton.addEventListener("click", () =>
+          this.onInsertBlockButtonClicked(),
+        );
+      } else {
+        console.warn(
+          `Insert content block button with ID "${insertButtonId}" not found or is not a button, no insert functionality will be supported.`,
+        );
+      }
+    } else {
+      console.warn(
+        `No data-insert-button-id provided; insert content block functionality is disabled.`,
+      );
+    }
+
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "resize-preview") {
         if (this.preview instanceof HTMLIFrameElement) {
@@ -100,6 +134,21 @@ export class ContentBlockEditor {
     return highlight;
   }
 
+  createBlockListOverlay(): HTMLDivElement {
+    const overlay = document.createElement("div");
+    overlay.className = "content-block-highlight__block-list-overlay";
+    overlay.hidden = true;
+    overlay.tabIndex = -1;
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Available content blocks");
+    overlay.setAttribute("aria-hidden", "true");
+
+    document.body.appendChild(overlay);
+
+    return overlay;
+  }
+
   updateHighlight() {
     let text = this.textarea.value;
 
@@ -142,6 +191,16 @@ export class ContentBlockEditor {
     if (mark) {
       await this.onMarkEnter(mark);
     }
+  }
+
+  async onInsertBlockButtonClicked() {
+    if (this.blocks.length === 0) {
+      this.blocksPromise ??= this.preloadBlocks();
+      this.blocks = await this.blocksPromise;
+      this.blocksPromise = undefined;
+    }
+
+    this.renderBlockListOverlay();
   }
 
   onTextareaMouseLeave() {
@@ -217,10 +276,94 @@ export class ContentBlockEditor {
     this.preview.innerHTML = "";
   }
 
+  private hideBlockListOverlay() {
+    this.blockListOverlay.hidden = true;
+    this.blockListOverlay.setAttribute("aria-hidden", "true");
+    this.blockListOverlay.replaceChildren();
+  }
+
   private clearHoverTimer() {
     if (this.hoverPreviewTimeoutId !== undefined) {
       window.clearTimeout(this.hoverPreviewTimeoutId);
       this.hoverPreviewTimeoutId = undefined;
+    }
+  }
+
+  private createBlockFormatsList(
+    block: BlockSearchResult,
+  ): HTMLUListElement | null {
+    if (block.formats.length === 0) {
+      return null;
+    }
+
+    const formatsList = document.createElement("ul");
+    formatsList.className = "content-block-highlight__block-format-list";
+
+    for (const format of block.formats) {
+      const formatListItem = document.createElement("li");
+      formatListItem.className =
+        "content-block-highlight__block-format-list-item";
+      formatListItem.textContent = format;
+      formatsList.appendChild(formatListItem);
+    }
+
+    return formatsList;
+  }
+
+  private createBlockListItem(block: BlockSearchResult): HTMLLIElement {
+    const listItem = document.createElement("li");
+    listItem.className = "content-block-highlight__block-list-item";
+
+    const title = document.createElement("span");
+    title.className = "content-block-highlight__block-list-item-title";
+    title.textContent = block.title;
+
+    listItem.appendChild(title);
+
+    const formatsList = this.createBlockFormatsList(block);
+    if (formatsList) {
+      listItem.appendChild(formatsList);
+    }
+
+    return listItem;
+  }
+
+  private renderBlockListOverlay() {
+    const heading = document.createElement("h2");
+    heading.className = "content-block-highlight__block-list-title";
+    heading.textContent = "Available content blocks";
+
+    const content = document.createElement("div");
+    content.className = "content-block-highlight__block-list-content";
+
+    if (this.blocks.length === 0) {
+      const emptyState = document.createElement("p");
+      emptyState.className = "content-block-highlight__block-list-empty-state";
+      emptyState.textContent = "No content blocks available.";
+      content.appendChild(emptyState);
+    } else {
+      const list = document.createElement("ul");
+      list.className = "content-block-highlight__block-list";
+
+      for (const block of this.blocks) {
+        list.appendChild(this.createBlockListItem(block));
+      }
+
+      content.appendChild(list);
+    }
+
+    this.blockListOverlay.replaceChildren(heading, content);
+    this.blockListOverlay.hidden = false;
+    this.blockListOverlay.setAttribute("aria-hidden", "false");
+    this.blockListOverlay.focus();
+  }
+
+  async preloadBlocks(): Promise<BlockSearchResult[]> {
+    try {
+      return await this.apiClient.fetchAllBlocks();
+    } catch (error) {
+      console.error("Failed to preload blocks:", error);
+      return [];
     }
   }
 

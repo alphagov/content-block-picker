@@ -68,9 +68,15 @@
       <main class="govuk-main-wrapper" id="main-content">
         <div id="app">
           <h1 class="govuk-heading-xl">Content Block Editor</h1>
+          <div>
+            <button class="govuk-button" id="insert-content-block-button">
+              Insert content block
+            </button>
+          </div>
           <textarea
             class="my-textarea govuk-textarea"
             data-module="content-block-highlight"
+            data-insert-button-id="insert-content-block-button"
           ></textarea>
         </div>
       </main>
@@ -120,9 +126,12 @@
     </script>
     <script type="module">
       import { ContentBlockEditor } from "/src/content-block-editor.ts";
-      new ContentBlockEditor(document.querySelector(".my-textarea"), {
-        baseUrl: "http://localhost:5173/",
-      });
+      const editor = new ContentBlockEditor(
+        document.querySelector(".my-textarea"),
+        {
+          baseUrl: "http://localhost:5173/",
+        },
+      );
     </script>
     <script type="application/json" id="content-blocks">
       [

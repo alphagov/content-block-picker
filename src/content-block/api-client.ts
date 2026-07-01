@@ -15,14 +15,42 @@ export interface EmbedCodePreview {
  */
 
 import { isValidEmbedCode } from "./regex.ts";
+import type { BlockSearchResponse, BlockSearchResult } from "../@types/block";
 
 export class APIClient {
   private cache = new Map<string, Promise<EmbedCodePreview>>();
   private readonly baseUrl: URL;
-  private readonly RENDER_PATH = "/api/blocks/:embedCode/render";
+  private readonly BLOCKS_PATH = "/api/blocks";
+  private readonly RENDER_PATH = `${this.BLOCKS_PATH}/:embedCode/render`;
 
   constructor(baseUrl: string) {
     this.baseUrl = new URL(baseUrl);
+  }
+
+  async fetchAllBlocks(): Promise<BlockSearchResult[]> {
+    const results: BlockSearchResult[] = [];
+    let nextUrl: string | null = new URL(
+      this.BLOCKS_PATH,
+      this.baseUrl,
+    ).toString();
+
+    while (nextUrl) {
+      const pageData = await this.fetchBlocksPage(nextUrl);
+      results.push(...pageData.results);
+
+      const nextLink = pageData.links.find((link) => link.rel === "next")?.href;
+      nextUrl = nextLink ? this.validateNextLink(nextLink) : null;
+    }
+
+    return results;
+  }
+
+  private async fetchBlocksPage(url: string): Promise<BlockSearchResponse> {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch blocks: ${response.status}`);
+    }
+    return response.json() as Promise<BlockSearchResponse>;
   }
 
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
@@ -80,6 +108,22 @@ export class APIClient {
     if (!fullUrl.pathname.startsWith(this.baseUrl.pathname)) {
       throw new Error(
         `Invalid URL: ${fullUrl} is not within the base path of ${this.baseUrl}`,
+      );
+    }
+    return fullUrl.toString();
+  }
+
+  private validateNextLink(nextLink: string): string {
+    const fullUrl = new URL(nextLink, this.baseUrl);
+    if (fullUrl.origin !== this.baseUrl.origin) {
+      throw new Error(
+        `Invalid pagination URL: ${fullUrl} is not on the same origin as ${this.baseUrl}`,
+      );
+    }
+    const expectedPath = new URL(this.BLOCKS_PATH, this.baseUrl).pathname;
+    if (fullUrl.pathname !== expectedPath) {
+      throw new Error(
+        `Invalid pagination URL: ${fullUrl} is not a valid pagination link for ${expectedPath}`,
       );
     }
     return fullUrl.toString();
