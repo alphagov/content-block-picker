@@ -79,6 +79,34 @@ describe("APIClient", () => {
     vi.stubGlobal("fetch", fetchMock);
   });
 
+  describe("buildUrl", () => {
+    test("buildUrl encodes the embed code in the render path", () => {
+      const embedCode = "{{embed:contact:abc-123/somepath#full}}";
+      const client = new APIClient(baseUrl) as unknown as {
+        buildUrl: (embed: string) => string;
+      };
+
+      const result = client.buildUrl(embedCode);
+
+      expect(result).toBe(
+        `${baseUrl}/api/blocks/${encodeURIComponent(embedCode)}/render`,
+      );
+    });
+
+    test("buildUrl rejects URLs outside the configured base path", () => {
+      // bit of a fudge to test the URL validation logic without exposing buildUrl as a public method, but it allows us
+      // to verify that the client correctly rejects embed codes that would result in URLs outside the base path
+      const client = new APIClient(
+        "https://example.test/editor/",
+      ) as unknown as {
+        buildUrl: (embed: string) => string;
+      };
+      expect(() => client.buildUrl("{{embed:contact:abcd-123}}")).toThrow(
+        "is not within the base path",
+      );
+    });
+  });
+
   describe("fetchPreview", () => {
     test("it fetches from the encoded block render URL", async () => {
       const embedCode = "{{embed:contact:abc-123/some-path#full}}";
@@ -187,32 +215,6 @@ describe("APIClient", () => {
       const pending = client.fetchPreview(embedCode);
       expect(client.get(embedCode)).toBe(pending);
       await expect(pending).resolves.toEqual(payload);
-    });
-
-    test("buildUrl encodes the embed code in the render path", () => {
-      const embedCode = "{{embed:contact:abc-123/somepath#full}}";
-      const client = new APIClient(baseUrl) as unknown as {
-        buildUrl: (embed: string) => string;
-      };
-
-      const result = client.buildUrl(embedCode);
-
-      expect(result).toBe(
-        `${baseUrl}/api/blocks/${encodeURIComponent(embedCode)}/render`,
-      );
-    });
-
-    test("buildUrl rejects URLs outside the configured base path", () => {
-      // bit of a fudge to test the URL validation logic without exposing buildUrl as a public method, but it allows us
-      // to verify that the client correctly rejects embed codes that would result in URLs outside the base path
-      const client = new APIClient(
-        "https://example.test/editor/",
-      ) as unknown as {
-        buildUrl: (embed: string) => string;
-      };
-      expect(() => client.buildUrl("{{embed:contact:abcd-123}}")).toThrow(
-        "is not within the base path",
-      );
     });
 
     test("it rejects embed codes that do not match the supported syntax", async () => {
