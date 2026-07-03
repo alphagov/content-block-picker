@@ -243,6 +243,183 @@ describe("ContentBlockPicker", () => {
 
       expect(observeSpy).toHaveBeenCalledWith(textarea);
     });
+
+    test("it shows a block list when the configured insert button is clicked", () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button">Insert block</button>
+        <textarea
+          id="my-textarea"
+          data-module="content-block-highlight"
+          data-cbp-insert-block-button="insert-content-block-button"
+        ></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+
+      expect(editorInstance.blockListElement?.hidden).toBe(true);
+
+      insertButton.click();
+
+      expect(editorInstance.blockListElement.hidden).toBe(false);
+      expect(editorInstance.blockListElement.textContent).toBe("Block list");
+      expect(editorInstance.blockListElement.getAttribute("aria-hidden")).toBe(
+        "false",
+      );
+    });
+
+    test("it hides the block list when escape is pressed", () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button">Insert block</button>
+        <textarea
+          id="my-textarea"
+          data-module="content-block-highlight"
+          data-cbp-insert-block-button="insert-content-block-button"
+        ></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+
+      insertButton.click();
+      expect(editorInstance.blockListElement.hidden).toBe(false);
+
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+
+      expect(editorInstance.blockListElement?.hidden).toBe(true);
+      expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    });
+
+    test("it hides the block list when the block list is clicked", () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button">Insert block</button>
+        <textarea
+          id="my-textarea"
+          data-module="content-block-highlight"
+          data-cbp-insert-block-button="insert-content-block-button"
+        ></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+
+      insertButton.click();
+      expect(editorInstance.blockListElement?.hidden).toBe(false);
+
+      editorInstance.blockListElement?.click();
+
+      expect(editorInstance.blockListElement?.hidden).toBe(true);
+      expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    });
+
+    test("it hides the block list when clicking outside the block list", () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button">Insert block</button>
+        <textarea
+          id="my-textarea"
+          data-module="content-block-highlight"
+          data-cbp-insert-block-button="insert-content-block-button"
+        ></textarea>
+      `;
+
+      const textareaWithButton = document.getElementById(
+        "my-textarea",
+      ) as HTMLTextAreaElement;
+      const insertButton = document.getElementById(
+        "insert-content-block-button",
+      ) as HTMLButtonElement;
+
+      const editorInstance = new ContentBlockEditor(textareaWithButton, {
+        baseUrl,
+      });
+
+      insertButton.click();
+      expect(editorInstance.blockListElement?.hidden).toBe(false);
+
+      document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+      expect(editorInstance.blockListElement?.hidden).toBe(true);
+      expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
+        "true",
+      );
+    });
+  });
+
+  describe("multiple editors with insert buttons", () => {
+    test("it binds each editor instance to its own insert button", () => {
+      document.body.innerHTML = `
+        <button id="insert-content-block-button-1">Insert block 1</button>
+        <textarea
+          id="my-textarea-1"
+          data-module="content-block-highlight"
+          data-cbp-insert-block-button="insert-content-block-button-1"
+        ></textarea>
+
+        <button id="insert-content-block-button-2">Insert block 2</button>
+        <textarea
+          id="my-textarea-2"
+          data-module="content-block-highlight"
+          data-cbp-insert-block-button="insert-content-block-button-2"
+        ></textarea>
+      `;
+
+      const insertButtonOne = document.getElementById(
+        "insert-content-block-button-1",
+      ) as HTMLButtonElement;
+      const insertButtonTwo = document.getElementById(
+        "insert-content-block-button-2",
+      ) as HTMLButtonElement;
+
+      const [firstEditor, secondEditor] = ContentBlockEditor.initAll({
+        baseUrl,
+      });
+
+      expect(firstEditor.blockListElement?.hidden).toBe(true);
+      expect(secondEditor.blockListElement?.hidden).toBe(true);
+
+      insertButtonOne.click();
+
+      expect(firstEditor.blockListElement?.hidden).toBe(false);
+      expect(secondEditor.blockListElement?.hidden).toBe(true);
+
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+
+      expect(firstEditor.blockListElement?.hidden).toBe(true);
+      expect(secondEditor.blockListElement?.hidden).toBe(true);
+
+      insertButtonTwo.click();
+
+      expect(firstEditor.blockListElement?.hidden).toBe(true);
+      expect(secondEditor.blockListElement?.hidden).toBe(false);
+    });
   });
 
   describe("initAll", () => {

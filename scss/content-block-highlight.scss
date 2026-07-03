@@ -39,3 +39,12 @@ textarea.content-block-highlight__input {
   background: $govuk-body-background-colour;
   box-shadow: 0 2px 8px rgb(11 12 12 / 20%);
 }
+
+.content-block-highlight__block-list {
+  position: fixed;
+  z-index: 1000;
+  padding: 8px 12px;
+  border: 1px solid $govuk-border-colour;
+  background: $govuk-body-background-colour;
+  box-shadow: 0 2px 8px rgb(11 12 12 / 15%);
+}

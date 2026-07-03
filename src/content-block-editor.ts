@@ -21,6 +21,7 @@ export class ContentBlockEditor {
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
   currentMarkUnderCursor: HTMLElement | null = null;
+  blockListElement: HTMLDivElement;
 
   constructor(element: Element, options: ContentBlockEditorOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -50,6 +51,11 @@ export class ContentBlockEditor {
     this.textarea.addEventListener("mouseleave", () =>
       this.onTextareaMouseLeave(),
     );
+    if (this.textarea.dataset.cbpInsertBlockButton) {
+      this.blockListElement = this.createBlockListElement();
+      this.attachInsertBlockButtonListener(this.blockListElement);
+      this.attachBlockListHideListeners(this.blockListElement);
+    }
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "resize-preview") {
         if (this.preview instanceof HTMLIFrameElement) {
@@ -98,6 +104,71 @@ export class ContentBlockEditor {
     this.wrapper.appendChild(highlight);
 
     return highlight;
+  }
+
+  createBlockListElement(): HTMLDivElement {
+    const blockListPlaceholder = document.createElement("div");
+    blockListPlaceholder.className = "content-block-highlight__block-list";
+    blockListPlaceholder.hidden = true;
+    blockListPlaceholder.textContent = "Block list";
+    blockListPlaceholder.setAttribute("role", "dialog");
+    blockListPlaceholder.setAttribute("aria-hidden", "true");
+    blockListPlaceholder.setAttribute("aria-label", "Insert content block");
+
+    document.body.appendChild(blockListPlaceholder);
+
+    return blockListPlaceholder;
+  }
+
+  attachInsertBlockButtonListener(blockListElement: HTMLDivElement) {
+    const buttonId = this.textarea.dataset.cbpInsertBlockButton;
+    if (!buttonId) return;
+
+    const button = document.getElementById(buttonId);
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (blockListElement) {
+        this.showBlockListElement(button, blockListElement);
+      }
+    });
+  }
+
+  attachBlockListHideListeners(blockListElement: HTMLDivElement) {
+    blockListElement.addEventListener("click", () => {
+      this.hideElement(blockListElement);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (blockListElement.hidden) return;
+      if (!(event.target instanceof Node)) return;
+      if (blockListElement.contains(event.target)) return;
+
+      this.hideElement(blockListElement);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      this.hideElement(blockListElement as HTMLElement);
+    });
+  }
+
+  showBlockListElement(
+    button: HTMLButtonElement,
+    blockListElement: HTMLDivElement,
+  ) {
+    const buttonRect = button.getBoundingClientRect();
+    this.blockListElement.style.top = `${buttonRect.bottom + window.scrollY + 8}px`;
+    this.blockListElement.style.left = `${buttonRect.left + window.scrollX}px`;
+    this.blockListElement.hidden = false;
+    this.blockListElement.setAttribute("aria-hidden", "false");
+  }
+
+  showElement(blockListElement: HTMLElement) {
+    blockListElement.hidden = false;
+    blockListElement.setAttribute("aria-hidden", "false");
   }
 
   updateHighlight() {
