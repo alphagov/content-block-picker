@@ -6,10 +6,37 @@ export interface EmbedCodePreview {
 }
 
 /**
+ * The organisation that owns a content block.
+ */
+export interface ContentBlockOrganisation {
+  name: string;
+  content_id: string;
+}
+
+/**
+ * A single content block as returned by the blocks list endpoint.
+ */
+export interface ContentBlock {
+  title: string;
+  block_type: string; // Maybe an enum in the future
+  organisation: ContentBlockOrganisation;
+  state: string;
+  embed_code: string;
+  formats: string[];
+}
+
+/**
+ * The response shape of the blocks list endpoint.
+ */
+export interface BlocksResponse {
+  results: ContentBlock[];
+}
+
+/**
  * APIClient is a simple client for fetching rendered content blocks from the server.
  *
- * It includes an in-memory cache to avoid redundant network requests for the same embed
- * code. The cache is keyed by the embed code string, and the values are Promises that
+ * It includes an in-memory cache to avoid redundant network requests for the same
+ * embed code. The cache is keyed by the embed code string, and the values are Promises that
  * resolve to the fetched data. This allows multiple concurrent requests for the same
  * embed code to share the same Promise, preventing duplicate fetches.
  */
@@ -19,10 +46,34 @@ import { isValidEmbedCode } from "./regex.ts";
 export class APIClient {
   private cache = new Map<string, Promise<EmbedCodePreview>>();
   private readonly baseUrl: URL;
-  private readonly RENDER_PATH = "/api/blocks/:embedCode/render";
+  private readonly API_BASE_PATH = "/api/blocks";
+  private readonly BLOCKS_PATH = this.API_BASE_PATH;
+  private readonly RENDER_PATH = `${this.API_BASE_PATH}/:embedCode/render`;
 
   constructor(baseUrl: string) {
     this.baseUrl = new URL(baseUrl);
+  }
+
+  /**
+   * Fetches all content blocks from the API.
+   *
+   * Deliberately does not cache the results, as the list of blocks may change over time. Each call to this method will
+   * make a new network request to fetch the latest data.
+   *
+   * @returns A Promise that resolves to an array of ContentBlock objects.
+   */
+  fetchAllBlocks(): Promise<ContentBlock[]> {
+    const url = new URL(this.BLOCKS_PATH, this.baseUrl).toString();
+
+    return fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch blocks: ${response.status}`);
+        }
+
+        return response.json() as Promise<BlocksResponse>;
+      })
+      .then((data) => data.results);
   }
 
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {

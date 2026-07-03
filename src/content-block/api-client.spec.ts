@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { APIClient } from "./api-client";
+import type { BlocksResponse } from "./api-client";
 
 interface BlockResponse {
   html: string;
@@ -11,6 +12,15 @@ function createSuccessResponse(data: BlockResponse): Response {
     ok: true,
     status: 200,
     text,
+  } as unknown as Response;
+}
+
+function createJsonResponse(data: unknown): Response {
+  const json = vi.fn().mockResolvedValue(data);
+  return {
+    ok: true,
+    status: 200,
+    json,
   } as unknown as Response;
 }
 
@@ -126,5 +136,67 @@ describe("APIClient", () => {
     );
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  describe("fetchAllBlocks", () => {
+    const payload: BlocksResponse = {
+      results: [
+        {
+          title: "Sample Pension Block 1",
+          block_type: "Pension",
+          organisation: {
+            name: "AI Security Institute",
+            content_id: "3a279946-1880-410e-ad4e-eb3cef22e210",
+          },
+          state: "published",
+          embed_code: "{{embed:content_block_pension:sample-pension-1}}",
+          formats: [],
+        },
+        {
+          title: "Sample Time Period Block 1",
+          block_type: "Time period",
+          organisation: {
+            name: "AI Security Institute",
+            content_id: "3a279946-1880-410e-ad4e-eb3cef22e210",
+          },
+          state: "published",
+          embed_code: "{{embed:content_block_time_period:sample-time-1}}",
+          formats: ["long_form", "years"],
+        },
+      ],
+    };
+
+    test("it fetches from the blocks list URL and unwraps results", async () => {
+      const client = new APIClient(baseUrl);
+
+      fetchMock.mockResolvedValue(createJsonResponse(payload));
+
+      const result = await client.fetchAllBlocks();
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledWith(`${baseUrl}/api/blocks`);
+      expect(result).toEqual(payload.results);
+    });
+
+    test("it does not cache results between calls", async () => {
+      const client = new APIClient(baseUrl);
+
+      fetchMock.mockResolvedValue(createJsonResponse(payload));
+
+      await client.fetchAllBlocks();
+      await client.fetchAllBlocks();
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    test("it throws when the response is not ok", async () => {
+      const client = new APIClient(baseUrl);
+
+      fetchMock.mockResolvedValue(createErrorResponse(500));
+
+      await expect(client.fetchAllBlocks()).rejects.toThrow(
+        "Failed to fetch blocks: 500",
+      );
+    });
   });
 });
