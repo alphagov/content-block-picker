@@ -63,6 +63,22 @@ ContentBlockEditor.initAll({
 });
 ```
 
+### Listing available blocks
+
+The picker can show editors the content blocks available to them so they don't need to know an embed code up front. Add a trigger button and point the textarea at it with the `data-cbp-insert-block-button` attribute, set to the button's `id`:
+
+```html
+<button id="insert-content-block-button">Insert block</button>
+<textarea
+  data-module="content-block-highlight"
+  data-cbp-insert-block-button="insert-content-block-button"
+></textarea>
+```
+
+Clicking the button opens an overlay that fetches the blocks from `GET {baseUrl}/api/blocks` and lists each one by title, with its available formats nested underneath. The list is loaded fresh each time it is opened (so it always reflects the current state of the blocks) and is dismissed by pressing `Escape`, clicking the list, or clicking anywhere outside it.
+
+Each textarea is wired to its own button, so multiple editors can appear on the same page. The attribute is optional — omit it and the picker behaves exactly as before.
+
 ## Demo
 
 You can see a [demo of the work so far here](https://alphagov.github.io/content-block-editor/)
