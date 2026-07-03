@@ -41,7 +41,7 @@ textarea.content-block-highlight__input {
 }
 
 .content-block-highlight__block-list {
-  position: fixed;
+  position: absolute;
   z-index: 1000;
   padding: 8px 12px;
   border: 1px solid $govuk-border-colour;

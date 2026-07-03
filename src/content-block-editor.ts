@@ -5,6 +5,7 @@ import {
   makeIframePayload,
 } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
+import type { ContentBlock } from "./content-block/api-client.ts";
 
 export interface ContentBlockEditorOptions {
   baseUrl: string;
@@ -21,7 +22,8 @@ export class ContentBlockEditor {
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
   currentMarkUnderCursor: HTMLElement | null = null;
-  blockListElement: HTMLDivElement;
+  blockListElement: HTMLDivElement | null = null;
+  blockListRequest?: Promise<ContentBlock[]>;
 
   constructor(element: Element, options: ContentBlockEditorOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -110,7 +112,6 @@ export class ContentBlockEditor {
     const blockListPlaceholder = document.createElement("div");
     blockListPlaceholder.className = "content-block-highlight__block-list";
     blockListPlaceholder.hidden = true;
-    blockListPlaceholder.textContent = "Block list";
     blockListPlaceholder.setAttribute("role", "dialog");
     blockListPlaceholder.setAttribute("aria-hidden", "true");
     blockListPlaceholder.setAttribute("aria-label", "Insert content block");
@@ -160,15 +161,78 @@ export class ContentBlockEditor {
     blockListElement: HTMLDivElement,
   ) {
     const buttonRect = button.getBoundingClientRect();
-    this.blockListElement.style.top = `${buttonRect.bottom + window.scrollY + 8}px`;
-    this.blockListElement.style.left = `${buttonRect.left + window.scrollX}px`;
-    this.blockListElement.hidden = false;
-    this.blockListElement.setAttribute("aria-hidden", "false");
+    const topMargin = 8;
+    blockListElement.style.top = `${buttonRect.bottom + window.scrollY + topMargin}px`;
+    blockListElement.style.left = `${buttonRect.left + window.scrollX}px`;
+    blockListElement.replaceChildren(
+      document.createTextNode("Fetching blocks..."),
+    );
+    this.showElement(blockListElement);
+    void this.fetchAndRenderBlockList();
   }
 
   showElement(blockListElement: HTMLElement) {
     blockListElement.hidden = false;
     blockListElement.setAttribute("aria-hidden", "false");
+  }
+
+  hideElement(blockListElement: HTMLElement) {
+    blockListElement.hidden = true;
+    blockListElement.setAttribute("aria-hidden", "true");
+  }
+
+  private renderBlockListErrorState() {
+    this.blockListElement?.replaceChildren(
+      document.createTextNode("Unable to load blocks."),
+    );
+  }
+
+  private renderBlockList(blocks: ContentBlock[]) {
+    if (!this.blockListElement) return;
+
+    const blockList = document.createElement("ul");
+
+    for (const block of blocks) {
+      const blockItem = document.createElement("li");
+      blockItem.append(document.createTextNode(block.title));
+
+      if (block.formats.length > 0) {
+        const formatsList = document.createElement("ul");
+
+        for (const format of block.formats) {
+          const formatItem = document.createElement("li");
+          formatItem.textContent = format;
+          formatsList.appendChild(formatItem);
+        }
+
+        blockItem.appendChild(formatsList);
+      }
+
+      blockList.appendChild(blockItem);
+    }
+
+    this.blockListElement.replaceChildren(blockList);
+  }
+
+  private async fetchAndRenderBlockList() {
+    if (this.blockListRequest) {
+      return;
+    }
+
+    const request = this.apiClient.fetchAllBlocks();
+    this.blockListRequest = request;
+
+    try {
+      const blocks = await request;
+      this.renderBlockList(blocks);
+    } catch (error) {
+      console.error(error);
+      this.renderBlockListErrorState();
+    } finally {
+      if (this.blockListRequest === request) {
+        this.blockListRequest = undefined;
+      }
+    }
   }
 
   updateHighlight() {
@@ -262,8 +326,7 @@ export class ContentBlockEditor {
 
       this.preview.srcdoc = makeIframePayload(preview.html);
       this.positionHoverPreview(mark);
-      this.preview.hidden = false;
-      this.preview.setAttribute("aria-hidden", "false");
+      this.showElement(this.preview);
     } catch (error) {
       console.error(error);
       this.hideHoverPreview();
