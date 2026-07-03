@@ -79,3 +79,142 @@ test.describe("Content Block Editor", () => {
     expect(html).toContain('<mark class="content-block-highlight__mark">');
   });
 });
+
+test.describe("List available blocks", () => {
+  test("it fetches and displays blocks when the insert button is clicked", async ({
+    page,
+  }) => {
+    const mockBlocks = {
+      results: [
+        {
+          title: "Pension Block A",
+          block_type: "Pension",
+          organisation: {
+            name: "Test Org",
+            content_id: "test-id-1",
+          },
+          state: "published",
+          embed_code: "{{embed:content_block_pension:abc123}}",
+          formats: [],
+        },
+        {
+          title: "Time Period Block B",
+          block_type: "Time period",
+          organisation: {
+            name: "Test Org",
+            content_id: "test-id-2",
+          },
+          state: "published",
+          embed_code: "{{embed:content_block_time_period:def456}}",
+          formats: ["long_form", "years"],
+        },
+      ],
+    };
+
+    // Set up network interception for the blocks endpoint
+    await page.route(/\/api\/blocks$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockBlocks),
+      });
+    });
+
+    const insertButton = page.locator("#insert-content-block-button");
+    const blockList = page.locator(".content-block-highlight__block-list");
+
+    // Block list should be hidden initially
+    await expect(blockList).toHaveAttribute("aria-hidden", "true");
+
+    // Click the insert button
+    await insertButton.click();
+
+    // Block list should be visible with loading state
+    await expect(blockList).toHaveAttribute("aria-hidden", "false");
+
+    // Wait for the blocks to load and be displayed
+    const topLevelList = blockList.locator("ul").first();
+    await expect(topLevelList).toBeVisible();
+    await expect(topLevelList.locator("> li")).toHaveCount(2);
+
+    // Check first block (no formats)
+    const firstBlock = topLevelList.locator("> li").first();
+    await expect(firstBlock).toContainText("Pension Block A");
+
+    // Check second block (with formats)
+    const secondBlock = topLevelList.locator("> li").nth(1);
+    await expect(secondBlock).toContainText("Time Period Block B");
+
+    // Check that formats are displayed as nested list for second block
+    const secondBlockFormatsList = secondBlock.locator("ul");
+    await expect(secondBlockFormatsList).toBeVisible();
+    await expect(secondBlockFormatsList.locator("li")).toHaveCount(2);
+    await expect(secondBlockFormatsList).toContainText("long_form");
+    await expect(secondBlockFormatsList).toContainText("years");
+  });
+
+  test("it hides the block list when clicking outside of it", async ({
+    page,
+  }) => {
+    const mockBlocks = {
+      results: [
+        {
+          title: "Test Block",
+          block_type: "Pension",
+          organisation: {
+            name: "Test Org",
+            content_id: "test-id",
+          },
+          state: "published",
+          embed_code: "{{embed:content_block_pension:test}}",
+          formats: [],
+        },
+      ],
+    };
+
+    await page.route(/\/api\/blocks$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockBlocks),
+      });
+    });
+
+    const insertButton = page.locator("#insert-content-block-button");
+    const blockList = page.locator(".content-block-highlight__block-list");
+    const textarea = page.locator("textarea.content-block-highlight__input");
+
+    // Click the insert button to show the block list
+    await insertButton.click();
+    await expect(blockList).toHaveAttribute("aria-hidden", "false");
+
+    // Click outside the block list (on the textarea)
+    await textarea.click();
+
+    // Block list should be hidden
+    await expect(blockList).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("it displays an error message when block fetch fails", async ({
+    page,
+  }) => {
+    // Mock the API endpoint to return a 500 error
+    await page.route(/\/api\/blocks$/, (route) => {
+      route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Internal Server Error" }),
+      });
+    });
+
+    const insertButton = page.locator("#insert-content-block-button");
+    const blockList = page.locator(".content-block-highlight__block-list");
+
+    // Click the insert button
+    await insertButton.click();
+
+    // Block list should be visible with error message
+    await expect(blockList).toHaveAttribute("aria-hidden", "false");
+    await expect(blockList).toContainText("Unable to load blocks.");
+  });
+});

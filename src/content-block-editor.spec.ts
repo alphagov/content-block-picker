@@ -1,5 +1,6 @@
 import { expect, test, describe, beforeEach, vi } from "vitest";
 import { ContentBlockEditor } from "./content-block-editor.ts";
+import type { ContentBlock } from "./content-block/api-client.ts";
 
 describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;
@@ -7,6 +8,30 @@ describe("ContentBlockPicker", () => {
 
   const embedPreviewDelayMs = 314;
   const baseUrl = "http://not-used.test";
+  const sampleBlocks: ContentBlock[] = [
+    {
+      title: "Sample Pension Block 1",
+      block_type: "Pension",
+      organisation: {
+        name: "AI Security Institute",
+        content_id: "11111111-2222-3333-4444-000000000000",
+      },
+      state: "published",
+      embed_code: "{{embed:content_block_pension:sample-pension-1}}",
+      formats: [],
+    },
+    {
+      title: "Sample Time Period Block 1",
+      block_type: "Time period",
+      organisation: {
+        name: "AI Security Institute",
+        content_id: "11111111-2222-3333-4444-000000000001",
+      },
+      state: "published",
+      embed_code: "{{embed:content_block_time_period:sample-time-1}}",
+      formats: ["long_form", "years"],
+    },
+  ];
 
   function mockSuccessFetch() {
     const fetchMock = vi.fn().mockResolvedValue({
@@ -17,6 +42,29 @@ describe("ContentBlockPicker", () => {
 
     vi.stubGlobal("fetch", fetchMock);
     return fetchMock;
+  }
+
+  function setupEditorWithInsertButton() {
+    document.body.innerHTML = `
+      <button id="insert-content-block-button">Insert block</button>
+      <textarea
+        id="my-textarea"
+        data-module="content-block-highlight"
+        data-cbp-insert-block-button="insert-content-block-button"
+      ></textarea>
+    `;
+
+    const textareaWithButton = document.getElementById(
+      "my-textarea",
+    ) as HTMLTextAreaElement;
+    const insertButton = document.getElementById(
+      "insert-content-block-button",
+    ) as HTMLButtonElement;
+    const editorInstance = new ContentBlockEditor(textareaWithButton, {
+      baseUrl,
+    });
+
+    return { textareaWithButton, insertButton, editorInstance };
   }
 
   beforeEach(() => {
@@ -244,61 +292,113 @@ describe("ContentBlockPicker", () => {
       expect(observeSpy).toHaveBeenCalledWith(textarea);
     });
 
-    test("it shows a block list when the configured insert button is clicked", () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button">Insert block</button>
-        <textarea
-          id="my-textarea"
-          data-module="content-block-highlight"
-          data-cbp-insert-block-button="insert-content-block-button"
-        ></textarea>
-      `;
-
-      const textareaWithButton = document.getElementById(
-        "my-textarea",
-      ) as HTMLTextAreaElement;
-      const insertButton = document.getElementById(
-        "insert-content-block-button",
-      ) as HTMLButtonElement;
-
-      const editorInstance = new ContentBlockEditor(textareaWithButton, {
-        baseUrl,
-      });
+    test("it shows a fetching message and then renders blocks when the configured insert button is clicked", async () => {
+      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      const fetchAllBlocksMock = vi
+        .spyOn(editorInstance.apiClient, "fetchAllBlocks")
+        .mockResolvedValue(sampleBlocks);
 
       expect(editorInstance.blockListElement?.hidden).toBe(true);
 
       insertButton.click();
 
-      expect(editorInstance.blockListElement.hidden).toBe(false);
-      expect(editorInstance.blockListElement.textContent).toBe("Block list");
-      expect(editorInstance.blockListElement.getAttribute("aria-hidden")).toBe(
+      expect(fetchAllBlocksMock).toHaveBeenCalledTimes(1);
+      expect(editorInstance.blockListElement?.hidden).toBe(false);
+      expect(editorInstance.blockListElement?.textContent).toBe(
+        "Fetching blocks...",
+      );
+      expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
         "false",
       );
+
+      await vi.waitFor(() => {
+        const topLevelList =
+          editorInstance.blockListElement?.querySelector("ul");
+        expect(topLevelList).not.toBeNull();
+        expect(topLevelList?.children).toHaveLength(2);
+      });
+
+      const topLevelList = editorInstance.blockListElement?.querySelector(
+        "ul",
+      ) as HTMLUListElement;
+      const topLevelItems = Array.from(
+        topLevelList.children,
+      ) as HTMLLIElement[];
+
+      expect(topLevelItems[0].childNodes[0]?.textContent).toBe(
+        "Sample Pension Block 1",
+      );
+      expect(topLevelItems[0].querySelector("ul")).toBeNull();
+      expect(topLevelItems[1].childNodes[0]?.textContent).toBe(
+        "Sample Time Period Block 1",
+      );
+      expect(
+        Array.from(topLevelItems[1].querySelectorAll("ul > li")).map(
+          (item) => item.textContent,
+        ),
+      ).toEqual(["long_form", "years"]);
     });
 
-    test("it hides the block list when escape is pressed", () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button">Insert block</button>
-        <textarea
-          id="my-textarea"
-          data-module="content-block-highlight"
-          data-cbp-insert-block-button="insert-content-block-button"
-        ></textarea>
-      `;
+    test("it positions the block list relative to the document, accounting for scroll", () => {
+      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
 
-      const textareaWithButton = document.getElementById(
-        "my-textarea",
-      ) as HTMLTextAreaElement;
-      const insertButton = document.getElementById(
-        "insert-content-block-button",
-      ) as HTMLButtonElement;
+      vi.spyOn(insertButton, "getBoundingClientRect").mockReturnValue({
+        bottom: 100,
+        left: 40,
+      } as DOMRect);
+      vi.spyOn(window, "scrollY", "get").mockReturnValue(500);
+      vi.spyOn(window, "scrollX", "get").mockReturnValue(30);
 
-      const editorInstance = new ContentBlockEditor(textareaWithButton, {
-        baseUrl,
+      insertButton.click();
+
+      // top = bottom (100) + scrollY (500) + 8px gap; left = left (40) + scrollX (30)
+      expect(editorInstance.blockListElement?.style.top).toBe("608px");
+      expect(editorInstance.blockListElement?.style.left).toBe("70px");
+    });
+
+    test("it does not start a second block fetch while the first one is in flight", async () => {
+      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      let resolveBlocks: (blocks: ContentBlock[]) => void = () => {};
+      const pendingBlocks = new Promise<ContentBlock[]>((resolve) => {
+        resolveBlocks = resolve;
+      });
+
+      const fetchAllBlocksMock = vi
+        .spyOn(editorInstance.apiClient, "fetchAllBlocks")
+        .mockReturnValue(pendingBlocks);
+
+      insertButton.click();
+      insertButton.click();
+
+      expect(fetchAllBlocksMock).toHaveBeenCalledTimes(1);
+      expect(editorInstance.blockListElement?.textContent).toBe(
+        "Fetching blocks...",
+      );
+
+      resolveBlocks(sampleBlocks);
+
+      await vi.waitFor(() => {
+        expect(editorInstance.blockListElement?.textContent).toContain(
+          "Sample Pension Block 1",
+        );
       });
 
       insertButton.click();
-      expect(editorInstance.blockListElement.hidden).toBe(false);
+
+      expect(fetchAllBlocksMock).toHaveBeenCalledTimes(2);
+    });
+
+    test("it hides the block list when escape is pressed", () => {
+      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      insertButton.click();
+      expect(editorInstance.blockListElement?.hidden).toBe(false);
 
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 
@@ -309,25 +409,10 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it hides the block list when the block list is clicked", () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button">Insert block</button>
-        <textarea
-          id="my-textarea"
-          data-module="content-block-highlight"
-          data-cbp-insert-block-button="insert-content-block-button"
-        ></textarea>
-      `;
-
-      const textareaWithButton = document.getElementById(
-        "my-textarea",
-      ) as HTMLTextAreaElement;
-      const insertButton = document.getElementById(
-        "insert-content-block-button",
-      ) as HTMLButtonElement;
-
-      const editorInstance = new ContentBlockEditor(textareaWithButton, {
-        baseUrl,
-      });
+      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
 
       insertButton.click();
       expect(editorInstance.blockListElement?.hidden).toBe(false);
@@ -341,25 +426,10 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it hides the block list when clicking outside the block list", () => {
-      document.body.innerHTML = `
-        <button id="insert-content-block-button">Insert block</button>
-        <textarea
-          id="my-textarea"
-          data-module="content-block-highlight"
-          data-cbp-insert-block-button="insert-content-block-button"
-        ></textarea>
-      `;
-
-      const textareaWithButton = document.getElementById(
-        "my-textarea",
-      ) as HTMLTextAreaElement;
-      const insertButton = document.getElementById(
-        "insert-content-block-button",
-      ) as HTMLButtonElement;
-
-      const editorInstance = new ContentBlockEditor(textareaWithButton, {
-        baseUrl,
-      });
+      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
 
       insertButton.click();
       expect(editorInstance.blockListElement?.hidden).toBe(false);
@@ -401,6 +471,12 @@ describe("ContentBlockPicker", () => {
       const [firstEditor, secondEditor] = ContentBlockEditor.initAll({
         baseUrl,
       });
+      vi.spyOn(firstEditor.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+      vi.spyOn(secondEditor.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
 
       expect(firstEditor.blockListElement?.hidden).toBe(true);
       expect(secondEditor.blockListElement?.hidden).toBe(true);
