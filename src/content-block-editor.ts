@@ -187,6 +187,35 @@ export class ContentBlockEditor {
     );
   }
 
+  insertEmbedCode(embedCode: string) {
+    const start = this.textarea.selectionStart ?? 0;
+    const end = this.textarea.selectionEnd ?? 0;
+    const currentValue = this.textarea.value;
+
+    this.textarea.value =
+      currentValue.slice(0, start) + embedCode + currentValue.slice(end);
+
+    const newCursorPosition = start + embedCode.length;
+    this.textarea.selectionStart = newCursorPosition;
+    this.textarea.selectionEnd = newCursorPosition;
+
+    this.textarea.dispatchEvent(new Event("input"));
+  }
+
+  private createBlockListButton(
+    label: string,
+    embedCode: string,
+  ): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      this.insertEmbedCode(embedCode);
+      this.textarea.focus();
+    });
+    return button;
+  }
+
   private renderBlockList(blocks: ContentBlock[]) {
     if (!this.blockListElement) return;
 
@@ -194,16 +223,21 @@ export class ContentBlockEditor {
 
     for (const block of blocks) {
       const blockItem = document.createElement("li");
-      blockItem.append(document.createTextNode(block.title));
       blockItem.dataset.embedCode = block.embed_code;
+      blockItem.appendChild(
+        this.createBlockListButton(block.title, block.embed_code),
+      );
 
       if (block.formats.length > 0) {
         const formatsList = document.createElement("ul");
 
         for (const format of block.formats) {
+          const formatEmbedCode = `${block.embed_code.slice(0, -2)}#${format}}}`;
           const formatItem = document.createElement("li");
-          formatItem.dataset.embedCode = `${block.embed_code.slice(0, -2)}#${format}}}`;
-          formatItem.textContent = format;
+          formatItem.dataset.embedCode = formatEmbedCode;
+          formatItem.appendChild(
+            this.createBlockListButton(format, formatEmbedCode),
+          );
           formatsList.appendChild(formatItem);
         }
 

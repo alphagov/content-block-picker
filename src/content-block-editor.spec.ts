@@ -458,6 +458,165 @@ describe("ContentBlockPicker", () => {
     });
   });
 
+  describe("insertEmbedCode", () => {
+    test("it inserts the embed code at the caret position", () => {
+      editor.textarea.value = "before after";
+      editor.textarea.selectionStart = 7;
+      editor.textarea.selectionEnd = 7;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe("before {{embed:contact:123}}after");
+    });
+
+    test("it inserts at the beginning when the caret is at position 0", () => {
+      editor.textarea.value = "existing text";
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 0;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe("{{embed:contact:123}}existing text");
+    });
+
+    test("it replaces selected text with the embed code", () => {
+      editor.textarea.value = "replace me";
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 10;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe("{{embed:contact:123}}");
+    });
+
+    test("it moves the cursor to after the inserted embed code", () => {
+      editor.textarea.value = "text";
+      editor.textarea.selectionStart = 4;
+      editor.textarea.selectionEnd = 4;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      const expectedPosition = "text{{embed:contact:123}}".length;
+      expect(editor.textarea.selectionStart).toBe(expectedPosition);
+      expect(editor.textarea.selectionEnd).toBe(expectedPosition);
+    });
+
+    test("it dispatches an input event to update the highlight", () => {
+      const inputSpy = vi.fn();
+      editor.textarea.addEventListener("input", inputSpy);
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(inputSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("block list item clicks", () => {
+    test("it inserts the embed code and closes the list when a block item button is clicked", async () => {
+      const { insertButton, editorInstance, textareaWithButton } =
+        setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(
+          editorInstance.blockListElement?.querySelector("ul"),
+        ).not.toBeNull();
+      });
+
+      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+        "li button",
+      ) as HTMLButtonElement;
+      firstBlockButton.click();
+
+      expect(textareaWithButton.value).toBe(
+        "{{embed:content_block_pension:sample-pension-1}}",
+      );
+      expect(editorInstance.blockListElement?.hidden).toBe(true);
+    });
+
+    test("it inserts the format embed code when a format item button is clicked", async () => {
+      const { insertButton, editorInstance, textareaWithButton } =
+        setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(
+          editorInstance.blockListElement?.querySelector("ul"),
+        ).not.toBeNull();
+      });
+
+      const formatButton = editorInstance.blockListElement?.querySelector(
+        "li ul li button",
+      ) as HTMLButtonElement;
+      formatButton.click();
+
+      expect(textareaWithButton.value).toBe(
+        "{{embed:content_block_time_period:sample-time-1#long_form}}",
+      );
+      expect(editorInstance.blockListElement?.hidden).toBe(true);
+    });
+
+    test("it inserts at the current caret position in the textarea", async () => {
+      const { insertButton, editorInstance, textareaWithButton } =
+        setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      textareaWithButton.value = "start end";
+      textareaWithButton.selectionStart = 6;
+      textareaWithButton.selectionEnd = 6;
+
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(
+          editorInstance.blockListElement?.querySelector("ul"),
+        ).not.toBeNull();
+      });
+
+      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+        "li button",
+      ) as HTMLButtonElement;
+      firstBlockButton.click();
+
+      expect(textareaWithButton.value).toBe(
+        "start {{embed:content_block_pension:sample-pension-1}}end",
+      );
+    });
+
+    test("it returns focus to the textarea after inserting a block", async () => {
+      const { insertButton, editorInstance, textareaWithButton } =
+        setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(
+          editorInstance.blockListElement?.querySelector("ul"),
+        ).not.toBeNull();
+      });
+
+      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+        "li button",
+      ) as HTMLButtonElement;
+      firstBlockButton.click();
+
+      expect(document.activeElement).toBe(textareaWithButton);
+    });
+  });
+
   describe("multiple editors with insert buttons", () => {
     test("it binds each editor instance to its own insert button", () => {
       document.body.innerHTML = `

@@ -233,4 +233,52 @@ test.describe("List available blocks", () => {
     await expect(blockList).toHaveAttribute("aria-hidden", "false");
     await expect(blockList).toContainText("Unable to load blocks.");
   });
+
+  test("it inserts the embed code into the textarea and returns focus when a block is clicked", async ({
+    page,
+  }) => {
+    const mockBlocks = {
+      results: [
+        {
+          title: "Pension Block A",
+          block_type: "Pension",
+          organisation: { name: "Test Org", content_id: "test-id-1" },
+          state: "published",
+          embed_code: "{{embed:content_block_pension:abc123}}",
+          formats: [],
+        },
+      ],
+    };
+
+    await page.route(/\/api\/blocks$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockBlocks),
+      });
+    });
+
+    const insertButton = page.locator("#insert-content-block-button");
+    const blockList = page.locator(".content-block-highlight__block-list");
+    const textarea = page.locator("textarea.content-block-highlight__input");
+
+    await insertButton.click();
+
+    // Wait for the block list to populate
+    const firstBlockButton = blockList.locator("li button").first();
+    await expect(firstBlockButton).toBeVisible();
+
+    await firstBlockButton.click();
+
+    // Embed code should appear in the textarea
+    await expect(textarea).toHaveValue(
+      "{{embed:content_block_pension:abc123}}",
+    );
+
+    // Block list should be dismissed
+    await expect(blockList).toHaveAttribute("aria-hidden", "true");
+
+    // Focus should have returned to the textarea
+    await expect(textarea).toBeFocused();
+  });
 });
