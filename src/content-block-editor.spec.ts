@@ -509,6 +509,45 @@ describe("ContentBlockPicker", () => {
 
       expect(inputSpy).toHaveBeenCalledTimes(1);
     });
+
+    test("it inserts after the closing braces if the caret is inside an embed code", () => {
+      editor.textarea.value = "text {{embed:contact:existing}} more text";
+      // Position caret inside the embed code (at the 'e' in 'existing')
+      editor.textarea.selectionStart = 20;
+      editor.textarea.selectionEnd = 20;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "text {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
+
+    test("it inserts after the embed code even when caret is at the start", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} more text";
+      // Position caret at the start of the embed code
+      editor.textarea.selectionStart = 7;
+      editor.textarea.selectionEnd = 7;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
+
+    test("it does not duplicate text when selected range is inside an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} more text";
+      // Selection is entirely inside the embed code.
+      editor.textarea.selectionStart = 15;
+      editor.textarea.selectionEnd = 20;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
   });
 
   describe("block list item clicks", () => {

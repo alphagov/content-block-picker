@@ -188,18 +188,46 @@ export class ContentBlockEditor {
   }
 
   insertEmbedCode(embedCode: string) {
-    const start = this.textarea.selectionStart ?? 0;
-    const end = this.textarea.selectionEnd ?? 0;
+    const selectionStart = this.textarea.selectionStart ?? 0;
+    const selectionEnd = this.textarea.selectionEnd ?? 0;
     const currentValue = this.textarea.value;
+    const hasSelection = selectionStart !== selectionEnd;
+
+    const insertPosition = this.adjustInsertPositionIfCaretIsInsideEmbedCode(
+      selectionStart,
+      currentValue,
+    );
+
+    // Prevent overwriting existing embed code if the caret is inside it.
+    const textEndPosition = hasSelection
+      ? Math.max(selectionEnd, insertPosition)
+      : insertPosition;
 
     this.textarea.value =
-      currentValue.slice(0, start) + embedCode + currentValue.slice(end);
+      currentValue.slice(0, insertPosition) +
+      embedCode +
+      currentValue.slice(textEndPosition);
 
-    const newCursorPosition = start + embedCode.length;
+    const newCursorPosition = insertPosition + embedCode.length;
     this.textarea.selectionStart = newCursorPosition;
     this.textarea.selectionEnd = newCursorPosition;
 
     this.textarea.dispatchEvent(new Event("input"));
+  }
+
+  private adjustInsertPositionIfCaretIsInsideEmbedCode(
+    selectionStart: number,
+    currentValue: string,
+  ): number {
+    const embedCodeMatches = currentValue.matchAll(embedRegex);
+    for (const match of embedCodeMatches) {
+      const matchStart = match.index!;
+      const matchEnd = match.index! + match[0].length;
+      if (selectionStart >= matchStart && selectionStart < matchEnd) {
+        return matchEnd;
+      }
+    }
+    return selectionStart;
   }
 
   private createBlockListButton(
