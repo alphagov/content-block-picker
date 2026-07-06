@@ -328,15 +328,30 @@ describe("ContentBlockPicker", () => {
       expect(topLevelItems[0].childNodes[0]?.textContent).toBe(
         "Sample Pension Block 1",
       );
+      expect(topLevelItems[0].dataset.embedCode).toBe(
+        "{{embed:content_block_pension:sample-pension-1}}",
+      );
       expect(topLevelItems[0].querySelector("ul")).toBeNull();
       expect(topLevelItems[1].childNodes[0]?.textContent).toBe(
         "Sample Time Period Block 1",
       );
-      expect(
-        Array.from(topLevelItems[1].querySelectorAll("ul > li")).map(
-          (item) => item.textContent,
-        ),
-      ).toEqual(["long_form", "years"]);
+      expect(topLevelItems[1].dataset.embedCode).toBe(
+        "{{embed:content_block_time_period:sample-time-1}}",
+      );
+      const formatItems = Array.from(
+        topLevelItems[1].querySelectorAll("ul > li"),
+      ) as HTMLLIElement[];
+
+      expect(formatItems.map((item) => item.textContent)).toEqual([
+        "long_form",
+        "years",
+      ]);
+      expect(formatItems[0].dataset.embedCode).toBe(
+        "{{embed:content_block_time_period:sample-time-1#long_form}}",
+      );
+      expect(formatItems[1].dataset.embedCode).toBe(
+        "{{embed:content_block_time_period:sample-time-1#years}}",
+      );
     });
 
     test("it positions the block list relative to the document, accounting for scroll", () => {
