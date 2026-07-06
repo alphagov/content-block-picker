@@ -518,6 +518,152 @@ describe("ContentBlockPicker", () => {
 
       expect(inputSpy).toHaveBeenCalledTimes(1);
     });
+
+    test("it inserts after the closing braces if the caret is inside an embed code", () => {
+      editor.textarea.value = "text {{embed:contact:existing}} more text";
+      // Position caret inside the embed code (at the 'e' in 'existing')
+      editor.textarea.selectionStart = 20;
+      editor.textarea.selectionEnd = 20;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "text {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
+
+    test("it inserts after the embed code even when caret is at the start", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} more text";
+      // Position caret at the start of the embed code
+      editor.textarea.selectionStart = 7;
+      editor.textarea.selectionEnd = 7;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
+
+    test("it does not duplicate text when selected range is inside an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} more text";
+      // Selection is entirely inside the embed code.
+      editor.textarea.selectionStart = 15;
+      editor.textarea.selectionEnd = 20;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
+  });
+
+  describe("adjustInsertPositionIfSelectionOverlapsEmbedCode", () => {
+    test("it inserts after the embed code when selection starts before and ends inside", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select from "before " to middle of embed code
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 20;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}} after",
+      );
+    });
+
+    test("it inserts after the embed code when selection starts inside and ends after", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select from middle of embed code to " after"
+      editor.textarea.selectionStart = 20;
+      editor.textarea.selectionEnd = 43;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}}",
+      );
+    });
+
+    test("it inserts after the embed code when selection fully contains an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select entire line including the embed code
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 43;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}}",
+      );
+    });
+
+    test("it inserts after the rightmost embed code when selection overlaps multiple embed codes", () => {
+      editor.textarea.value =
+        "text {{embed:contact:first}} middle {{embed:contact:second}} end";
+      // Select from start of first embed to middle of second embed
+      editor.textarea.selectionStart = 5;
+      editor.textarea.selectionEnd = 50;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "text {{embed:contact:first}} middle {{embed:contact:second}}{{embed:contact:new}} end",
+      );
+    });
+
+    test("it preserves normal behavior when selection does not overlap with any embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select "after"
+      editor.textarea.selectionStart = 34;
+      editor.textarea.selectionEnd = 39;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}} {{embed:contact:new}}",
+      );
+    });
+
+    test("it handles selection at the exact boundary of an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select from the opening braces to the closing braces (entire embed code)
+      editor.textarea.selectionStart = 7;
+      editor.textarea.selectionEnd = 33;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}} after",
+      );
+    });
+
+    test("it handles selection that touches but does not overlap the start of an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select "before " (ends right before the embed code)
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 7;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "{{embed:contact:new}}{{embed:contact:existing}} after",
+      );
+    });
+
+    test("it handles selection that touches but does not overlap the end of an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select " after" (starts right after the embed code)
+      editor.textarea.selectionStart = 33;
+      editor.textarea.selectionEnd = 39;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}}",
+      );
+    });
   });
 
   describe("block list item clicks", () => {

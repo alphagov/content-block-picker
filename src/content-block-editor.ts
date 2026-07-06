@@ -188,18 +188,64 @@ export class ContentBlockEditor {
   }
 
   insertEmbedCode(embedCode: string) {
-    const start = this.textarea.selectionStart ?? 0;
-    const end = this.textarea.selectionEnd ?? 0;
+    const selectionStart = this.textarea.selectionStart ?? 0;
+    const selectionEnd = this.textarea.selectionEnd ?? 0;
     const currentValue = this.textarea.value;
 
-    this.textarea.value =
-      currentValue.slice(0, start) + embedCode + currentValue.slice(end);
+    const { insertPosition, textEndPosition } =
+      this.adjustInsertPositionIfSelectionOverlapsEmbedCode(
+        selectionStart,
+        selectionEnd,
+        currentValue,
+      );
 
-    const newCursorPosition = start + embedCode.length;
+    this.textarea.value =
+      currentValue.slice(0, insertPosition) +
+      embedCode +
+      currentValue.slice(textEndPosition);
+
+    const newCursorPosition = insertPosition + embedCode.length;
     this.textarea.selectionStart = newCursorPosition;
     this.textarea.selectionEnd = newCursorPosition;
 
     this.textarea.dispatchEvent(new Event("input"));
+  }
+
+  private adjustInsertPositionIfSelectionOverlapsEmbedCode(
+    selectionStart: number,
+    selectionEnd: number,
+    currentValue: string,
+  ): { insertPosition: number; textEndPosition: number } {
+    const embedCodeMatches = currentValue.matchAll(embedRegex);
+    let rightmostOverlapEnd = -1;
+
+    for (const match of embedCodeMatches) {
+      const matchStart = match.index!;
+      const matchEnd = match.index! + match[0].length;
+
+      // Check if selection overlaps with this embed code
+      const startOverlaps =
+        selectionStart >= matchStart && selectionStart < matchEnd;
+      const endOverlaps = selectionEnd > matchStart && selectionEnd <= matchEnd;
+      const fullyContains =
+        selectionStart < matchStart && selectionEnd > matchEnd;
+
+      if (startOverlaps || endOverlaps || fullyContains) {
+        rightmostOverlapEnd = Math.max(rightmostOverlapEnd, matchEnd);
+      }
+    }
+
+    if (rightmostOverlapEnd !== -1) {
+      return {
+        insertPosition: rightmostOverlapEnd,
+        textEndPosition: Math.max(selectionEnd, rightmostOverlapEnd),
+      };
+    }
+
+    return {
+      insertPosition: selectionStart,
+      textEndPosition: selectionEnd,
+    };
   }
 
   private createBlockListButton(
