@@ -140,10 +140,18 @@ test.describe("List available blocks", () => {
     // Check first block (no formats)
     const firstBlock = topLevelList.locator("> li").first();
     await expect(firstBlock).toContainText("Pension Block A");
+    await expect(firstBlock).toHaveAttribute(
+      "data-embed-code",
+      "{{embed:content_block_pension:abc123}}",
+    );
 
     // Check second block (with formats)
     const secondBlock = topLevelList.locator("> li").nth(1);
     await expect(secondBlock).toContainText("Time Period Block B");
+    await expect(secondBlock).toHaveAttribute(
+      "data-embed-code",
+      "{{embed:content_block_time_period:def456}}",
+    );
 
     // Check that formats are displayed as nested list for second block
     const secondBlockFormatsList = secondBlock.locator("ul");
@@ -151,6 +159,14 @@ test.describe("List available blocks", () => {
     await expect(secondBlockFormatsList.locator("li")).toHaveCount(2);
     await expect(secondBlockFormatsList).toContainText("long_form");
     await expect(secondBlockFormatsList).toContainText("years");
+    await expect(secondBlockFormatsList.locator("li").first()).toHaveAttribute(
+      "data-embed-code",
+      "{{embed:content_block_time_period:def456#long_form}}",
+    );
+    await expect(secondBlockFormatsList.locator("li").nth(1)).toHaveAttribute(
+      "data-embed-code",
+      "{{embed:content_block_time_period:def456#years}}",
+    );
   });
 
   test("it hides the block list when clicking outside of it", async ({

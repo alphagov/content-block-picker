@@ -195,12 +195,14 @@ export class ContentBlockEditor {
     for (const block of blocks) {
       const blockItem = document.createElement("li");
       blockItem.append(document.createTextNode(block.title));
+      blockItem.dataset.embedCode = block.embed_code;
 
       if (block.formats.length > 0) {
         const formatsList = document.createElement("ul");
 
         for (const format of block.formats) {
           const formatItem = document.createElement("li");
+          formatItem.dataset.embedCode = `${block.embed_code.slice(0, -2)}#${format}}}`;
           formatItem.textContent = format;
           formatsList.appendChild(formatItem);
         }
