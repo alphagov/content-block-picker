@@ -5,6 +5,7 @@ import {
   makeIframePayload,
 } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
+import type { ContentBlock } from "./content-block/api-client.ts";
 
 export interface ContentBlockEditorOptions {
   baseUrl: string;
@@ -21,6 +22,8 @@ export class ContentBlockEditor {
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
   currentMarkUnderCursor: HTMLElement | null = null;
+  blockListElement: HTMLDivElement | null = null;
+  blockListRequest?: Promise<ContentBlock[]>;
 
   constructor(element: Element, options: ContentBlockEditorOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -50,6 +53,11 @@ export class ContentBlockEditor {
     this.textarea.addEventListener("mouseleave", () =>
       this.onTextareaMouseLeave(),
     );
+    if (this.textarea.dataset.cbpInsertBlockButton) {
+      this.blockListElement = this.createBlockListElement();
+      this.attachInsertBlockButtonListener(this.blockListElement);
+      this.attachBlockListHideListeners(this.blockListElement);
+    }
     window.addEventListener("message", (event) => {
       if (event.data && event.data.type === "resize-preview") {
         if (this.preview instanceof HTMLIFrameElement) {
@@ -98,6 +106,132 @@ export class ContentBlockEditor {
     this.wrapper.appendChild(highlight);
 
     return highlight;
+  }
+
+  createBlockListElement(): HTMLDivElement {
+    const blockListPlaceholder = document.createElement("div");
+    blockListPlaceholder.className = "content-block-highlight__block-list";
+    blockListPlaceholder.hidden = true;
+    blockListPlaceholder.setAttribute("role", "dialog");
+    blockListPlaceholder.setAttribute("aria-hidden", "true");
+    blockListPlaceholder.setAttribute("aria-label", "Insert content block");
+
+    document.body.appendChild(blockListPlaceholder);
+
+    return blockListPlaceholder;
+  }
+
+  attachInsertBlockButtonListener(blockListElement: HTMLDivElement) {
+    const buttonId = this.textarea.dataset.cbpInsertBlockButton;
+    if (!buttonId) return;
+
+    const button = document.getElementById(buttonId);
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (blockListElement) {
+        this.showBlockListElement(button, blockListElement);
+      }
+    });
+  }
+
+  attachBlockListHideListeners(blockListElement: HTMLDivElement) {
+    blockListElement.addEventListener("click", () => {
+      this.hideElement(blockListElement);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (blockListElement.hidden) return;
+      if (!(event.target instanceof Node)) return;
+      if (blockListElement.contains(event.target)) return;
+
+      this.hideElement(blockListElement);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      this.hideElement(blockListElement as HTMLElement);
+    });
+  }
+
+  showBlockListElement(
+    button: HTMLButtonElement,
+    blockListElement: HTMLDivElement,
+  ) {
+    const buttonRect = button.getBoundingClientRect();
+    const topMargin = 8;
+    blockListElement.style.top = `${buttonRect.bottom + window.scrollY + topMargin}px`;
+    blockListElement.style.left = `${buttonRect.left + window.scrollX}px`;
+    blockListElement.replaceChildren(
+      document.createTextNode("Fetching blocks..."),
+    );
+    this.showElement(blockListElement);
+    void this.fetchAndRenderBlockList();
+  }
+
+  showElement(blockListElement: HTMLElement) {
+    blockListElement.hidden = false;
+    blockListElement.setAttribute("aria-hidden", "false");
+  }
+
+  hideElement(blockListElement: HTMLElement) {
+    blockListElement.hidden = true;
+    blockListElement.setAttribute("aria-hidden", "true");
+  }
+
+  private renderBlockListErrorState() {
+    this.blockListElement?.replaceChildren(
+      document.createTextNode("Unable to load blocks."),
+    );
+  }
+
+  private renderBlockList(blocks: ContentBlock[]) {
+    if (!this.blockListElement) return;
+
+    const blockList = document.createElement("ul");
+
+    for (const block of blocks) {
+      const blockItem = document.createElement("li");
+      blockItem.append(document.createTextNode(block.title));
+
+      if (block.formats.length > 0) {
+        const formatsList = document.createElement("ul");
+
+        for (const format of block.formats) {
+          const formatItem = document.createElement("li");
+          formatItem.textContent = format;
+          formatsList.appendChild(formatItem);
+        }
+
+        blockItem.appendChild(formatsList);
+      }
+
+      blockList.appendChild(blockItem);
+    }
+
+    this.blockListElement.replaceChildren(blockList);
+  }
+
+  private async fetchAndRenderBlockList() {
+    if (this.blockListRequest) {
+      return;
+    }
+
+    this.blockListRequest = this.apiClient.fetchAllBlocks();
+
+    try {
+      const blocks = await this.blockListRequest;
+      this.renderBlockList(blocks);
+    } catch (error) {
+      console.error(error);
+      this.renderBlockListErrorState();
+    } finally {
+      if (this.blockListRequest === this.blockListRequest) {
+        this.blockListRequest = undefined;
+      }
+    }
   }
 
   updateHighlight() {
@@ -191,8 +325,7 @@ export class ContentBlockEditor {
 
       this.preview.srcdoc = makeIframePayload(preview.html);
       this.positionHoverPreview(mark);
-      this.preview.hidden = false;
-      this.preview.setAttribute("aria-hidden", "false");
+      this.showElement(this.preview);
     } catch (error) {
       console.error(error);
       this.hideHoverPreview();
