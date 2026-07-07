@@ -52,9 +52,18 @@ var e = [
     `, o = class {
 	cache = /* @__PURE__ */ new Map();
 	baseUrl;
-	RENDER_PATH = "/api/blocks/:embedCode/render";
+	API_BASE_PATH = "/api/blocks";
+	BLOCKS_PATH = this.API_BASE_PATH;
+	RENDER_PATH = `${this.API_BASE_PATH}/:embedCode/render`;
 	constructor(e) {
 		this.baseUrl = new URL(e);
+	}
+	fetchAllBlocks() {
+		let e = new URL(this.BLOCKS_PATH, this.baseUrl).toString();
+		return fetch(e).then((e) => {
+			if (!e.ok) throw Error(`Failed to fetch blocks: ${e.status}`);
+			return e.json();
+		}).then((e) => e.results);
 	}
 	fetchPreview(e) {
 		if (this.cache.has(e)) return this.cache.get(e);
@@ -92,12 +101,14 @@ var e = [
 	hoverPreviewTimeoutId;
 	activeHoverEmbedCode = null;
 	currentMarkUnderCursor = null;
+	blockListElement = null;
+	blockListRequest;
 	constructor(e, t) {
 		this.embedPreviewDelayMs = t.embedPreviewDelayMs ?? 200, this.textarea = this.initializeModule(e), this.wrapper = this.createWrapper(), this.highlight = this.createHighlight(), this.preview = i(), this.wrapper.appendChild(this.preview);
 		let n = t.baseUrl;
 		this.apiClient = new o(n), this.textarea.classList.add("content-block-highlight__input"), this.updateHighlight(), this.textarea.addEventListener("input", () => this.updateHighlight()), this.textarea.addEventListener("scroll", () => {
 			this.syncScroll(), this.onTextareaMouseLeave();
-		}), this.textarea.addEventListener("mousemove", (e) => void this.onTextareaMouseMove(e)), this.textarea.addEventListener("mouseleave", () => this.onTextareaMouseLeave()), window.addEventListener("message", (e) => {
+		}), this.textarea.addEventListener("mousemove", (e) => void this.onTextareaMouseMove(e)), this.textarea.addEventListener("mouseleave", () => this.onTextareaMouseLeave()), this.textarea.dataset.cbpInsertBlockButton && (this.blockListElement = this.createBlockListElement(), this.attachInsertBlockButtonListener(this.blockListElement), this.attachBlockListHideListeners(this.blockListElement)), window.addEventListener("message", (e) => {
 			e.data && e.data.type === "resize-preview" && this.preview instanceof HTMLIFrameElement && (this.preview.style.height = `${e.data.height + 4}px`, this.preview.style.width = `${e.data.width + 4}px`);
 		}), "ResizeObserver" in window && new ResizeObserver(() => this.syncScroll()).observe(this.textarea);
 	}
@@ -115,6 +126,70 @@ var e = [
 	createHighlight() {
 		let e = document.createElement("div");
 		return e.className = "govuk-textarea content-block-highlight__highlight", e.setAttribute("aria-hidden", "true"), this.wrapper.appendChild(e), e;
+	}
+	createBlockListElement() {
+		let e = document.createElement("div");
+		return e.className = "content-block-highlight__block-list", e.hidden = !0, e.setAttribute("role", "dialog"), e.setAttribute("aria-hidden", "true"), e.setAttribute("aria-label", "Insert content block"), document.body.appendChild(e), e;
+	}
+	attachInsertBlockButtonListener(e) {
+		let t = this.textarea.dataset.cbpInsertBlockButton;
+		if (!t) return;
+		let n = document.getElementById(t);
+		n instanceof HTMLButtonElement && n.addEventListener("click", (t) => {
+			t.preventDefault(), t.stopPropagation(), e && this.showBlockListElement(n, e);
+		});
+	}
+	attachBlockListHideListeners(e) {
+		e.addEventListener("click", () => {
+			this.hideElement(e);
+		}), document.addEventListener("click", (t) => {
+			e.hidden || t.target instanceof Node && (e.contains(t.target) || this.hideElement(e));
+		}), document.addEventListener("keydown", (t) => {
+			t.key === "Escape" && this.hideElement(e);
+		});
+	}
+	showBlockListElement(e, t) {
+		let n = e.getBoundingClientRect();
+		t.style.top = `${n.bottom + window.scrollY + 8}px`, t.style.left = `${n.left + window.scrollX}px`, t.replaceChildren(document.createTextNode("Fetching blocks...")), this.showElement(t), this.fetchAndRenderBlockList();
+	}
+	showElement(e) {
+		e.hidden = !1, e.setAttribute("aria-hidden", "false");
+	}
+	hideElement(e) {
+		e.hidden = !0, e.setAttribute("aria-hidden", "true");
+	}
+	renderBlockListErrorState() {
+		this.blockListElement?.replaceChildren(document.createTextNode("Unable to load blocks."));
+	}
+	renderBlockList(e) {
+		if (!this.blockListElement) return;
+		let t = document.createElement("ul");
+		for (let n of e) {
+			let e = document.createElement("li");
+			if (e.append(document.createTextNode(n.title)), n.formats.length > 0) {
+				let t = document.createElement("ul");
+				for (let e of n.formats) {
+					let n = document.createElement("li");
+					n.textContent = e, t.appendChild(n);
+				}
+				e.appendChild(t);
+			}
+			t.appendChild(e);
+		}
+		this.blockListElement.replaceChildren(t);
+	}
+	async fetchAndRenderBlockList() {
+		if (!this.blockListRequest) {
+			this.blockListRequest = this.apiClient.fetchAllBlocks();
+			try {
+				let e = await this.blockListRequest;
+				this.renderBlockList(e);
+			} catch (e) {
+				console.error(e), this.renderBlockListErrorState();
+			} finally {
+				this.blockListRequest === this.blockListRequest && (this.blockListRequest = void 0);
+			}
+		}
 	}
 	updateHighlight() {
 		let e = this.textarea.value;
@@ -154,7 +229,7 @@ var e = [
 		try {
 			let r = await n;
 			if (this.activeHoverEmbedCode !== t) return;
-			this.preview.srcdoc = a(r.html), this.positionHoverPreview(e), this.preview.hidden = !1, this.preview.setAttribute("aria-hidden", "false");
+			this.preview.srcdoc = a(r.html), this.positionHoverPreview(e), this.showElement(this.preview);
 		} catch (e) {
 			console.error(e), this.hideHoverPreview();
 		}
