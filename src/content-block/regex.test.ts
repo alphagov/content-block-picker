@@ -71,6 +71,32 @@ describe("regex", () => {
     expect(result![3]).toEqual("some–alias—here");
   });
 
+  test("matches aliases with underscores", () => {
+    const input = "{{embed:content_block_pension:pension_123}}";
+    const result = regex.exec(input);
+
+    expect(result).not.toBeNull();
+    expect(result![3]).toEqual("pension_123");
+  });
+
+  test("matches underscore aliases with path and format suffixes", () => {
+    const withPath =
+      "{{embed:content_block_pension:pension_123/rates/rate/amount}}";
+    const withFormat = "{{embed:content_block_pension:pension_123#vvvv}}";
+
+    const pathResult = regex.exec(withPath);
+    regex.lastIndex = 0;
+    const formatResult = regex.exec(withFormat);
+
+    expect(pathResult).not.toBeNull();
+    expect(pathResult![3]).toEqual("pension_123");
+    expect(pathResult![4]).toEqual("/rates/rate/amount");
+
+    expect(formatResult).not.toBeNull();
+    expect(formatResult![3]).toEqual("pension_123");
+    expect(formatResult![5]).toEqual("#vvvv");
+  });
+
   test("does not match an unsupported document type", () => {
     const input =
       "{{embed:content_block_unknown:1690ab79-1880-461e-99e4-ed146fd9efab}}";

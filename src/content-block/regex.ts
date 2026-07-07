@@ -10,7 +10,7 @@ const supportedDocumentTypes = [
 const uuidRegex =
   /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 // The regex used to find content ID aliases
-const contentIdAliasRegex = /[a-z0-9\-–—]+/;
+const contentIdAliasRegex = /[a-z0-9_\-–—]+/;
 // The regex to find the optional internal content path after the UUID, begins with '/'
 const internalContentPathRegex = /(\/[a-z0-9_\-–—/]*)?/;
 // The regex used to find the optional format specifier begins with '#'
