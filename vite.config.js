@@ -16,9 +16,9 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: resolve(__dirname, "src/content-block-editor.ts"),
-      name: "Content Block Editor",
-      fileName: "content-block-editor",
+      entry: resolve(__dirname, "src/content-block-picker.ts"),
+      name: "content-block-picker",
+      fileName: "content-block-picker",
     },
     rollupOptions: {
       output: {

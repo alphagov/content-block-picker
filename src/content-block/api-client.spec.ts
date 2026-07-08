@@ -127,7 +127,7 @@ describe("APIClient", () => {
   test("buildUrl rejects URLs outside the configured base path", () => {
     // bit of a fudge to test the URL validation logic without exposing buildUrl as a public method, but it allows us
     // to verify that the client correctly rejects embed codes that would result in URLs outside the base path
-    const client = new APIClient("https://example.test/editor/") as unknown as {
+    const client = new APIClient("https://example.test/picker/") as unknown as {
       buildUrl: (embed: string) => string;
     };
     expect(() => client.buildUrl("{{embed:contact:abcd-123}}")).toThrow(

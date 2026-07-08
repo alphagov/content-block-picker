@@ -4,7 +4,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-test.describe("Content Block Editor", () => {
+test.describe("Content Block Picker", () => {
   test("it makes the highlighter visible", async ({ page }) => {
     const wrapper = page.locator(".content-block-highlight__wrapper");
     const textarea = page.locator("textarea.content-block-highlight__input");

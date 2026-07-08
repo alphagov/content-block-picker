@@ -1,10 +1,10 @@
 import { expect, test, describe, beforeEach, vi } from "vitest";
-import { ContentBlockEditor } from "./content-block-editor.ts";
+import { ContentBlockPicker } from "./content-block-picker.ts";
 import type { ContentBlock } from "./content-block/api-client.ts";
 
 describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;
-  let editor: ContentBlockEditor;
+  let picker: ContentBlockPicker;
 
   const embedPreviewDelayMs = 314;
   const baseUrl = "http://not-used.test";
@@ -44,7 +44,7 @@ describe("ContentBlockPicker", () => {
     return fetchMock;
   }
 
-  function setupEditorWithInsertButton() {
+  function setupPickerWithInsertButton() {
     document.body.innerHTML = `
       <button id="insert-content-block-button">Insert block</button>
       <textarea
@@ -60,11 +60,11 @@ describe("ContentBlockPicker", () => {
     const insertButton = document.getElementById(
       "insert-content-block-button",
     ) as HTMLButtonElement;
-    const editorInstance = new ContentBlockEditor(textareaWithButton, {
+    const pickerInstance = new ContentBlockPicker(textareaWithButton, {
       baseUrl,
     });
 
-    return { textareaWithButton, insertButton, editorInstance };
+    return { textareaWithButton, insertButton, pickerInstance };
   }
 
   beforeEach(() => {
@@ -74,19 +74,19 @@ describe("ContentBlockPicker", () => {
       </div>
     `;
     textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
-    editor = new ContentBlockEditor(textarea, { baseUrl, embedPreviewDelayMs });
+    picker = new ContentBlockPicker(textarea, { baseUrl, embedPreviewDelayMs });
   });
 
   describe("initializeModule", () => {
     test("it returns the element if it is a textarea", () => {
-      expect(editor.initializeModule(textarea)).toBe(textarea);
+      expect(picker.initializeModule(textarea)).toBe(textarea);
     });
 
     test("it throws an error if the element is not a textarea", () => {
       const div = document.createElement("div");
       div.innerHTML = "Not a textarea";
-      const editorMock = Object.create(ContentBlockEditor.prototype);
-      expect(() => editorMock.initializeModule(div)).toThrow(
+      const pickerMock = Object.create(ContentBlockPicker.prototype);
+      expect(() => pickerMock.initializeModule(div)).toThrow(
         /is not a textarea/,
       );
     });
@@ -94,7 +94,7 @@ describe("ContentBlockPicker", () => {
 
   describe("createWrapper", () => {
     test("it creates a wrapper div and moves the textarea inside it", () => {
-      const wrapper = editor.wrapper;
+      const wrapper = picker.wrapper;
 
       expect(wrapper.className).toBe("content-block-highlight__wrapper");
       expect(textarea.parentNode).toBe(wrapper);
@@ -106,47 +106,47 @@ describe("ContentBlockPicker", () => {
 
   describe("createHighlight", () => {
     test("it creates a highlight div inside the wrapper", () => {
-      const highlight = editor.highlight;
+      const highlight = picker.highlight;
 
       expect(highlight.className).toContain(
         "content-block-highlight__highlight",
       );
       expect(highlight.getAttribute("aria-hidden")).toBe("true");
-      expect(editor.wrapper.contains(highlight)).toBe(true);
+      expect(picker.wrapper.contains(highlight)).toBe(true);
     });
   });
 
   describe("createHoverPreview", () => {
     test("it creates an element attached to the wrapper", () => {
-      const preview = editor.preview;
+      const preview = picker.preview;
 
       expect(preview).toBeInstanceOf(HTMLIFrameElement);
       expect(preview.className).toContain("content-block-highlight__preview");
-      expect(editor.wrapper.contains(preview)).toBe(true);
+      expect(picker.wrapper.contains(preview)).toBe(true);
     });
   });
 
   describe("updateHighlight", () => {
     test("it escapes HTML and wraps embed codes", () => {
-      editor.textarea = textarea;
-      editor.highlight = document.createElement("div");
+      picker.textarea = textarea;
+      picker.highlight = document.createElement("div");
 
       textarea.value = "<b>{{embed:contact:123}}</b>";
-      editor.updateHighlight();
+      picker.updateHighlight();
 
-      expect(editor.highlight.innerHTML).toBe(
+      expect(picker.highlight.innerHTML).toBe(
         '&lt;b&gt;<mark class="content-block-highlight__mark">{{embed:contact:123}}</mark>&lt;/b&gt;',
       );
     });
 
     test("it adds a trailing space if the text ends with a newline", () => {
-      editor.textarea = textarea;
-      editor.highlight = document.createElement("div");
+      picker.textarea = textarea;
+      picker.highlight = document.createElement("div");
 
       textarea.value = "text\n";
-      editor.updateHighlight();
+      picker.updateHighlight();
 
-      expect(editor.highlight.innerHTML).toBe("text\n ");
+      expect(picker.highlight.innerHTML).toBe("text\n ");
     });
   });
 
@@ -159,17 +159,17 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
-      const mark = editor.highlight.querySelector(
+      const mark = picker.highlight.querySelector(
         ".content-block-highlight__mark",
       ) as HTMLElement;
 
-      vi.spyOn(editor, "getMarkUnderCursor").mockReturnValue(mark);
+      vi.spyOn(picker, "getMarkUnderCursor").mockReturnValue(mark);
       textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
       await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
 
       await vi.waitFor(() => {
-        expect(editor.preview.hidden).toBe(false);
-        expect(editor.preview.srcdoc).toContain("<p>Rendered</p>");
+        expect(picker.preview.hidden).toBe(false);
+        expect(picker.preview.srcdoc).toContain("<p>Rendered</p>");
       });
     });
 
@@ -181,19 +181,19 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
-      const mark = editor.highlight.querySelector(
+      const mark = picker.highlight.querySelector(
         ".content-block-highlight__mark",
       ) as HTMLElement;
 
-      vi.spyOn(editor, "getMarkUnderCursor").mockReturnValue(mark);
+      vi.spyOn(picker, "getMarkUnderCursor").mockReturnValue(mark);
       textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
       await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
-      await vi.waitFor(() => expect(editor.preview.hidden).toBe(false));
+      await vi.waitFor(() => expect(picker.preview.hidden).toBe(false));
 
       textarea.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
 
-      expect(editor.preview.hidden).toBe(true);
-      expect(editor.preview.innerHTML).toBe("");
+      expect(picker.preview.hidden).toBe(true);
+      expect(picker.preview.innerHTML).toBe("");
     });
 
     test("it hides the preview when the cursor moves off the mark", async () => {
@@ -204,55 +204,55 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
 
-      const mark = editor.highlight.querySelector(
+      const mark = picker.highlight.querySelector(
         ".content-block-highlight__mark",
       ) as HTMLElement;
 
       const getMarkSpy = vi
-        .spyOn(editor, "getMarkUnderCursor")
+        .spyOn(picker, "getMarkUnderCursor")
         .mockReturnValue(mark);
       textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
       await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
-      await vi.waitFor(() => expect(editor.preview.hidden).toBe(false));
+      await vi.waitFor(() => expect(picker.preview.hidden).toBe(false));
 
       getMarkSpy.mockReturnValue(null);
       textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
 
-      expect(editor.preview.hidden).toBe(true);
-      expect(editor.preview.innerHTML).toBe("");
+      expect(picker.preview.hidden).toBe(true);
+      expect(picker.preview.innerHTML).toBe("");
     });
 
     test("it does not show a preview when embed is not cached", async () => {
-      editor.highlight.innerHTML =
+      picker.highlight.innerHTML =
         '<mark class="content-block-highlight__mark">{{embed:contact:123}}</mark>';
-      const mark = editor.highlight.querySelector(
+      const mark = picker.highlight.querySelector(
         ".content-block-highlight__mark",
       ) as HTMLElement;
 
-      vi.spyOn(editor, "getMarkUnderCursor").mockReturnValue(mark);
+      vi.spyOn(picker, "getMarkUnderCursor").mockReturnValue(mark);
       textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
       await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
 
-      expect(editor.preview.srcdoc).toBe("");
-      expect(editor.preview.getAttribute("aria-hidden")).not.toBe("false");
+      expect(picker.preview.srcdoc).toBe("");
+      expect(picker.preview.getAttribute("aria-hidden")).not.toBe("false");
     });
   });
 
   describe("constructor & events", () => {
     test("the constructor initializes everything correctly", () => {
-      const editorInstance = new ContentBlockEditor(textarea, {
+      const pickerInstance = new ContentBlockPicker(textarea, {
         baseUrl,
         embedPreviewDelayMs,
       });
 
-      expect(editorInstance.textarea).toBe(textarea);
+      expect(pickerInstance.textarea).toBe(textarea);
       expect(
-        editorInstance.wrapper.classList.contains(
+        pickerInstance.wrapper.classList.contains(
           "content-block-highlight__wrapper",
         ),
       ).toBe(true);
       expect(
-        editorInstance.highlight.classList.contains(
+        pickerInstance.highlight.classList.contains(
           "content-block-highlight__highlight",
         ),
       ).toBe(true);
@@ -260,12 +260,12 @@ describe("ContentBlockPicker", () => {
         textarea.classList.contains("content-block-highlight__input"),
       ).toBe(true);
 
-      expect(editorInstance.preview).toBeInstanceOf(HTMLIFrameElement);
-      expect(editorInstance.embedPreviewDelayMs).toBe(embedPreviewDelayMs);
+      expect(pickerInstance.preview).toBeInstanceOf(HTMLIFrameElement);
+      expect(pickerInstance.embedPreviewDelayMs).toBe(embedPreviewDelayMs);
     });
 
     test("it updates the highlight on input", () => {
-      new ContentBlockEditor(textarea, { baseUrl });
+      new ContentBlockPicker(textarea, { baseUrl });
       textarea.value = "{{embed:contact:123}}";
       textarea.dispatchEvent(new Event("input"));
 
@@ -276,45 +276,45 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it syncs scroll positions", () => {
-      const editorInstance = new ContentBlockEditor(textarea, { baseUrl });
+      const pickerInstance = new ContentBlockPicker(textarea, { baseUrl });
       textarea.scrollTop = 50;
       textarea.scrollLeft = 20;
       textarea.dispatchEvent(new Event("scroll"));
 
-      expect(editorInstance.highlight.scrollTop).toBe(50);
-      expect(editorInstance.highlight.scrollLeft).toBe(20);
+      expect(pickerInstance.highlight.scrollTop).toBe(50);
+      expect(pickerInstance.highlight.scrollLeft).toBe(20);
     });
 
     test("it initializes ResizeObserver to sync scroll on resize", () => {
       const observeSpy = vi.spyOn(ResizeObserver.prototype, "observe");
-      new ContentBlockEditor(textarea, { baseUrl });
+      new ContentBlockPicker(textarea, { baseUrl });
 
       expect(observeSpy).toHaveBeenCalledWith(textarea);
     });
 
     test("it shows a fetching message when the configured insert button is clicked", async () => {
-      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      const { insertButton, pickerInstance } = setupPickerWithInsertButton();
       const fetchAllBlocksMock = vi
-        .spyOn(editorInstance.apiClient, "fetchAllBlocks")
+        .spyOn(pickerInstance.apiClient, "fetchAllBlocks")
         .mockResolvedValue(sampleBlocks);
 
-      expect(editorInstance.blockListElement?.hidden).toBe(true);
+      expect(pickerInstance.blockListElement?.hidden).toBe(true);
 
       insertButton.click();
 
       expect(fetchAllBlocksMock).toHaveBeenCalledTimes(1);
-      expect(editorInstance.blockListElement?.hidden).toBe(false);
-      expect(editorInstance.blockListElement?.textContent).toBe(
+      expect(pickerInstance.blockListElement?.hidden).toBe(false);
+      expect(pickerInstance.blockListElement?.textContent).toBe(
         "Fetching blocks...",
       );
-      expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
+      expect(pickerInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
         "false",
       );
     });
 
     test("it renders blocks with their formats after fetching", async () => {
-      const { insertButton, editorInstance } = setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance } = setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
@@ -322,12 +322,12 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => {
         const topLevelList =
-          editorInstance.blockListElement?.querySelector("ul");
+          pickerInstance.blockListElement?.querySelector("ul");
         expect(topLevelList).not.toBeNull();
         expect(topLevelList?.children).toHaveLength(2);
       });
 
-      const topLevelList = editorInstance.blockListElement?.querySelector(
+      const topLevelList = pickerInstance.blockListElement?.querySelector(
         "ul",
       ) as HTMLUListElement;
       const topLevelItems = Array.from(
@@ -364,8 +364,8 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it positions the block list relative to the document, accounting for scroll", () => {
-      const { insertButton, editorInstance } = setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance } = setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
@@ -379,33 +379,33 @@ describe("ContentBlockPicker", () => {
       insertButton.click();
 
       // top = bottom (100) + scrollY (500) + 8px gap; left = left (40) + scrollX (30)
-      expect(editorInstance.blockListElement?.style.top).toBe("608px");
-      expect(editorInstance.blockListElement?.style.left).toBe("70px");
+      expect(pickerInstance.blockListElement?.style.top).toBe("608px");
+      expect(pickerInstance.blockListElement?.style.left).toBe("70px");
     });
 
     test("it does not start a second block fetch while the first one is in flight", async () => {
-      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      const { insertButton, pickerInstance } = setupPickerWithInsertButton();
       let resolveBlocks: (blocks: ContentBlock[]) => void = () => {};
       const pendingBlocks = new Promise<ContentBlock[]>((resolve) => {
         resolveBlocks = resolve;
       });
 
       const fetchAllBlocksMock = vi
-        .spyOn(editorInstance.apiClient, "fetchAllBlocks")
+        .spyOn(pickerInstance.apiClient, "fetchAllBlocks")
         .mockReturnValue(pendingBlocks);
 
       insertButton.click();
       insertButton.click();
 
       expect(fetchAllBlocksMock).toHaveBeenCalledTimes(1);
-      expect(editorInstance.blockListElement?.textContent).toBe(
+      expect(pickerInstance.blockListElement?.textContent).toBe(
         "Fetching blocks...",
       );
 
       resolveBlocks(sampleBlocks);
 
       await vi.waitFor(() => {
-        expect(editorInstance.blockListElement?.textContent).toContain(
+        expect(pickerInstance.blockListElement?.textContent).toContain(
           "Sample Pension Block 1",
         );
       });
@@ -416,52 +416,52 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it hides the block list when escape is pressed", () => {
-      const { insertButton, editorInstance } = setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance } = setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
       insertButton.click();
-      expect(editorInstance.blockListElement?.hidden).toBe(false);
+      expect(pickerInstance.blockListElement?.hidden).toBe(false);
 
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 
-      expect(editorInstance.blockListElement?.hidden).toBe(true);
-      expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
+      expect(pickerInstance.blockListElement?.hidden).toBe(true);
+      expect(pickerInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
         "true",
       );
     });
 
     test("it hides the block list when the block list is clicked", () => {
-      const { insertButton, editorInstance } = setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance } = setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
       insertButton.click();
-      expect(editorInstance.blockListElement?.hidden).toBe(false);
+      expect(pickerInstance.blockListElement?.hidden).toBe(false);
 
-      editorInstance.blockListElement?.click();
+      pickerInstance.blockListElement?.click();
 
-      expect(editorInstance.blockListElement?.hidden).toBe(true);
-      expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
+      expect(pickerInstance.blockListElement?.hidden).toBe(true);
+      expect(pickerInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
         "true",
       );
     });
 
     test("it hides the block list when clicking outside the block list", () => {
-      const { insertButton, editorInstance } = setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance } = setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
       insertButton.click();
-      expect(editorInstance.blockListElement?.hidden).toBe(false);
+      expect(pickerInstance.blockListElement?.hidden).toBe(false);
 
       document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
-      expect(editorInstance.blockListElement?.hidden).toBe(true);
-      expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
+      expect(pickerInstance.blockListElement?.hidden).toBe(true);
+      expect(pickerInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
         "true",
       );
     });
@@ -469,91 +469,91 @@ describe("ContentBlockPicker", () => {
 
   describe("insertEmbedCode", () => {
     test("it inserts the embed code at the caret position", () => {
-      editor.textarea.value = "before after";
-      editor.textarea.selectionStart = 7;
-      editor.textarea.selectionEnd = 7;
+      picker.textarea.value = "before after";
+      picker.textarea.selectionStart = 7;
+      picker.textarea.selectionEnd = 7;
 
-      editor.insertEmbedCode("{{embed:contact:123}}");
+      picker.insertEmbedCode("{{embed:contact:123}}");
 
-      expect(editor.textarea.value).toBe("before {{embed:contact:123}}after");
+      expect(picker.textarea.value).toBe("before {{embed:contact:123}}after");
     });
 
     test("it inserts at the beginning when the caret is at position 0", () => {
-      editor.textarea.value = "existing text";
-      editor.textarea.selectionStart = 0;
-      editor.textarea.selectionEnd = 0;
+      picker.textarea.value = "existing text";
+      picker.textarea.selectionStart = 0;
+      picker.textarea.selectionEnd = 0;
 
-      editor.insertEmbedCode("{{embed:contact:123}}");
+      picker.insertEmbedCode("{{embed:contact:123}}");
 
-      expect(editor.textarea.value).toBe("{{embed:contact:123}}existing text");
+      expect(picker.textarea.value).toBe("{{embed:contact:123}}existing text");
     });
 
     test("it replaces selected text with the embed code", () => {
-      editor.textarea.value = "replace me";
-      editor.textarea.selectionStart = 0;
-      editor.textarea.selectionEnd = 10;
+      picker.textarea.value = "replace me";
+      picker.textarea.selectionStart = 0;
+      picker.textarea.selectionEnd = 10;
 
-      editor.insertEmbedCode("{{embed:contact:123}}");
+      picker.insertEmbedCode("{{embed:contact:123}}");
 
-      expect(editor.textarea.value).toBe("{{embed:contact:123}}");
+      expect(picker.textarea.value).toBe("{{embed:contact:123}}");
     });
 
     test("it moves the cursor to after the inserted embed code", () => {
-      editor.textarea.value = "text";
-      editor.textarea.selectionStart = 4;
-      editor.textarea.selectionEnd = 4;
+      picker.textarea.value = "text";
+      picker.textarea.selectionStart = 4;
+      picker.textarea.selectionEnd = 4;
 
-      editor.insertEmbedCode("{{embed:contact:123}}");
+      picker.insertEmbedCode("{{embed:contact:123}}");
 
       const expectedPosition = "text{{embed:contact:123}}".length;
-      expect(editor.textarea.selectionStart).toBe(expectedPosition);
-      expect(editor.textarea.selectionEnd).toBe(expectedPosition);
+      expect(picker.textarea.selectionStart).toBe(expectedPosition);
+      expect(picker.textarea.selectionEnd).toBe(expectedPosition);
     });
 
     test("it dispatches an input event to update the highlight", () => {
       const inputSpy = vi.fn();
-      editor.textarea.addEventListener("input", inputSpy);
+      picker.textarea.addEventListener("input", inputSpy);
 
-      editor.insertEmbedCode("{{embed:contact:123}}");
+      picker.insertEmbedCode("{{embed:contact:123}}");
 
       expect(inputSpy).toHaveBeenCalledTimes(1);
     });
 
     test("it inserts after the closing braces if the caret is inside an embed code", () => {
-      editor.textarea.value = "text {{embed:contact:existing}} more text";
+      picker.textarea.value = "text {{embed:contact:existing}} more text";
       // Position caret inside the embed code (at the 'e' in 'existing')
-      editor.textarea.selectionStart = 20;
-      editor.textarea.selectionEnd = 20;
+      picker.textarea.selectionStart = 20;
+      picker.textarea.selectionEnd = 20;
 
-      editor.insertEmbedCode("{{embed:contact:123}}");
+      picker.insertEmbedCode("{{embed:contact:123}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "text {{embed:contact:existing}}{{embed:contact:123}} more text",
       );
     });
 
     test("it inserts after the embed code even when caret is at the start", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} more text";
+      picker.textarea.value = "before {{embed:contact:existing}} more text";
       // Position caret at the start of the embed code
-      editor.textarea.selectionStart = 7;
-      editor.textarea.selectionEnd = 7;
+      picker.textarea.selectionStart = 7;
+      picker.textarea.selectionEnd = 7;
 
-      editor.insertEmbedCode("{{embed:contact:123}}");
+      picker.insertEmbedCode("{{embed:contact:123}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "before {{embed:contact:existing}}{{embed:contact:123}} more text",
       );
     });
 
     test("it does not duplicate text when selected range is inside an embed code", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} more text";
+      picker.textarea.value = "before {{embed:contact:existing}} more text";
       // Selection is entirely inside the embed code.
-      editor.textarea.selectionStart = 15;
-      editor.textarea.selectionEnd = 20;
+      picker.textarea.selectionStart = 15;
+      picker.textarea.selectionEnd = 20;
 
-      editor.insertEmbedCode("{{embed:contact:123}}");
+      picker.insertEmbedCode("{{embed:contact:123}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "before {{embed:contact:existing}}{{embed:contact:123}} more text",
       );
     });
@@ -561,106 +561,106 @@ describe("ContentBlockPicker", () => {
 
   describe("adjustInsertPositionIfSelectionOverlapsEmbedCode", () => {
     test("it inserts after the embed code when selection starts before and ends inside", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} after";
+      picker.textarea.value = "before {{embed:contact:existing}} after";
       // Select from "before " to middle of embed code
-      editor.textarea.selectionStart = 0;
-      editor.textarea.selectionEnd = 20;
+      picker.textarea.selectionStart = 0;
+      picker.textarea.selectionEnd = 20;
 
-      editor.insertEmbedCode("{{embed:contact:new}}");
+      picker.insertEmbedCode("{{embed:contact:new}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "before {{embed:contact:existing}}{{embed:contact:new}} after",
       );
     });
 
     test("it inserts after the embed code when selection starts inside and ends after", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} after";
+      picker.textarea.value = "before {{embed:contact:existing}} after";
       // Select from middle of embed code to " after"
-      editor.textarea.selectionStart = 20;
-      editor.textarea.selectionEnd = 43;
+      picker.textarea.selectionStart = 20;
+      picker.textarea.selectionEnd = 43;
 
-      editor.insertEmbedCode("{{embed:contact:new}}");
+      picker.insertEmbedCode("{{embed:contact:new}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "before {{embed:contact:existing}}{{embed:contact:new}}",
       );
     });
 
     test("it inserts after the embed code when selection fully contains an embed code", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} after";
+      picker.textarea.value = "before {{embed:contact:existing}} after";
       // Select entire line including the embed code
-      editor.textarea.selectionStart = 0;
-      editor.textarea.selectionEnd = 43;
+      picker.textarea.selectionStart = 0;
+      picker.textarea.selectionEnd = 43;
 
-      editor.insertEmbedCode("{{embed:contact:new}}");
+      picker.insertEmbedCode("{{embed:contact:new}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "before {{embed:contact:existing}}{{embed:contact:new}}",
       );
     });
 
     test("it inserts after the rightmost embed code when selection overlaps multiple embed codes", () => {
-      editor.textarea.value =
+      picker.textarea.value =
         "text {{embed:contact:first}} middle {{embed:contact:second}} end";
       // Select from start of first embed to middle of second embed
-      editor.textarea.selectionStart = 5;
-      editor.textarea.selectionEnd = 50;
+      picker.textarea.selectionStart = 5;
+      picker.textarea.selectionEnd = 50;
 
-      editor.insertEmbedCode("{{embed:contact:new}}");
+      picker.insertEmbedCode("{{embed:contact:new}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "text {{embed:contact:first}} middle {{embed:contact:second}}{{embed:contact:new}} end",
       );
     });
 
     test("it preserves normal behavior when selection does not overlap with any embed code", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} after";
+      picker.textarea.value = "before {{embed:contact:existing}} after";
       // Select "after"
-      editor.textarea.selectionStart = 34;
-      editor.textarea.selectionEnd = 39;
+      picker.textarea.selectionStart = 34;
+      picker.textarea.selectionEnd = 39;
 
-      editor.insertEmbedCode("{{embed:contact:new}}");
+      picker.insertEmbedCode("{{embed:contact:new}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "before {{embed:contact:existing}} {{embed:contact:new}}",
       );
     });
 
     test("it handles selection at the exact boundary of an embed code", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} after";
+      picker.textarea.value = "before {{embed:contact:existing}} after";
       // Select from the opening braces to the closing braces (entire embed code)
-      editor.textarea.selectionStart = 7;
-      editor.textarea.selectionEnd = 33;
+      picker.textarea.selectionStart = 7;
+      picker.textarea.selectionEnd = 33;
 
-      editor.insertEmbedCode("{{embed:contact:new}}");
+      picker.insertEmbedCode("{{embed:contact:new}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "before {{embed:contact:existing}}{{embed:contact:new}} after",
       );
     });
 
     test("it handles selection that touches but does not overlap the start of an embed code", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} after";
+      picker.textarea.value = "before {{embed:contact:existing}} after";
       // Select "before " (ends right before the embed code)
-      editor.textarea.selectionStart = 0;
-      editor.textarea.selectionEnd = 7;
+      picker.textarea.selectionStart = 0;
+      picker.textarea.selectionEnd = 7;
 
-      editor.insertEmbedCode("{{embed:contact:new}}");
+      picker.insertEmbedCode("{{embed:contact:new}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "{{embed:contact:new}}{{embed:contact:existing}} after",
       );
     });
 
     test("it handles selection that touches but does not overlap the end of an embed code", () => {
-      editor.textarea.value = "before {{embed:contact:existing}} after";
+      picker.textarea.value = "before {{embed:contact:existing}} after";
       // Select " after" (starts right after the embed code)
-      editor.textarea.selectionStart = 33;
-      editor.textarea.selectionEnd = 39;
+      picker.textarea.selectionStart = 33;
+      picker.textarea.selectionEnd = 39;
 
-      editor.insertEmbedCode("{{embed:contact:new}}");
+      picker.insertEmbedCode("{{embed:contact:new}}");
 
-      expect(editor.textarea.value).toBe(
+      expect(picker.textarea.value).toBe(
         "before {{embed:contact:existing}}{{embed:contact:new}}",
       );
     });
@@ -668,9 +668,9 @@ describe("ContentBlockPicker", () => {
 
   describe("block list item clicks", () => {
     test("it inserts the embed code and closes the list when a block item button is clicked", async () => {
-      const { insertButton, editorInstance, textareaWithButton } =
-        setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance, textareaWithButton } =
+        setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
@@ -678,11 +678,11 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => {
         expect(
-          editorInstance.blockListElement?.querySelector("ul"),
+          pickerInstance.blockListElement?.querySelector("ul"),
         ).not.toBeNull();
       });
 
-      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+      const firstBlockButton = pickerInstance.blockListElement?.querySelector(
         "li button",
       ) as HTMLButtonElement;
       firstBlockButton.click();
@@ -690,13 +690,13 @@ describe("ContentBlockPicker", () => {
       expect(textareaWithButton.value).toBe(
         "{{embed:content_block_pension:sample-pension-1}}",
       );
-      expect(editorInstance.blockListElement?.hidden).toBe(true);
+      expect(pickerInstance.blockListElement?.hidden).toBe(true);
     });
 
     test("it inserts the format embed code when a format item button is clicked", async () => {
-      const { insertButton, editorInstance, textareaWithButton } =
-        setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance, textareaWithButton } =
+        setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
@@ -704,11 +704,11 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => {
         expect(
-          editorInstance.blockListElement?.querySelector("ul"),
+          pickerInstance.blockListElement?.querySelector("ul"),
         ).not.toBeNull();
       });
 
-      const formatButton = editorInstance.blockListElement?.querySelector(
+      const formatButton = pickerInstance.blockListElement?.querySelector(
         "li ul li button",
       ) as HTMLButtonElement;
       formatButton.click();
@@ -716,13 +716,13 @@ describe("ContentBlockPicker", () => {
       expect(textareaWithButton.value).toBe(
         "{{embed:content_block_time_period:sample-time-1#long_form}}",
       );
-      expect(editorInstance.blockListElement?.hidden).toBe(true);
+      expect(pickerInstance.blockListElement?.hidden).toBe(true);
     });
 
     test("it inserts at the current caret position in the textarea", async () => {
-      const { insertButton, editorInstance, textareaWithButton } =
-        setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance, textareaWithButton } =
+        setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
@@ -734,11 +734,11 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => {
         expect(
-          editorInstance.blockListElement?.querySelector("ul"),
+          pickerInstance.blockListElement?.querySelector("ul"),
         ).not.toBeNull();
       });
 
-      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+      const firstBlockButton = pickerInstance.blockListElement?.querySelector(
         "li button",
       ) as HTMLButtonElement;
       firstBlockButton.click();
@@ -749,9 +749,9 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it returns focus to the textarea after inserting a block", async () => {
-      const { insertButton, editorInstance, textareaWithButton } =
-        setupEditorWithInsertButton();
-      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+      const { insertButton, pickerInstance, textareaWithButton } =
+        setupPickerWithInsertButton();
+      vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
@@ -759,11 +759,11 @@ describe("ContentBlockPicker", () => {
 
       await vi.waitFor(() => {
         expect(
-          editorInstance.blockListElement?.querySelector("ul"),
+          pickerInstance.blockListElement?.querySelector("ul"),
         ).not.toBeNull();
       });
 
-      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+      const firstBlockButton = pickerInstance.blockListElement?.querySelector(
         "li button",
       ) as HTMLButtonElement;
       firstBlockButton.click();
@@ -772,8 +772,8 @@ describe("ContentBlockPicker", () => {
     });
   });
 
-  describe("multiple editors with insert buttons", () => {
-    test("it binds each editor instance to its own insert button", () => {
+  describe("multiple pickers with insert buttons", () => {
+    test("it binds each picker instance to its own insert button", () => {
       document.body.innerHTML = `
         <button id="insert-content-block-button-1">Insert block 1</button>
         <textarea
@@ -797,33 +797,33 @@ describe("ContentBlockPicker", () => {
         "insert-content-block-button-2",
       ) as HTMLButtonElement;
 
-      const [firstEditor, secondEditor] = ContentBlockEditor.initAll({
+      const [firstPicker, secondPicker] = ContentBlockPicker.initAll({
         baseUrl,
       });
-      vi.spyOn(firstEditor.apiClient, "fetchAllBlocks").mockResolvedValue(
+      vi.spyOn(firstPicker.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
-      vi.spyOn(secondEditor.apiClient, "fetchAllBlocks").mockResolvedValue(
+      vi.spyOn(secondPicker.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
 
-      expect(firstEditor.blockListElement?.hidden).toBe(true);
-      expect(secondEditor.blockListElement?.hidden).toBe(true);
+      expect(firstPicker.blockListElement?.hidden).toBe(true);
+      expect(secondPicker.blockListElement?.hidden).toBe(true);
 
       insertButtonOne.click();
 
-      expect(firstEditor.blockListElement?.hidden).toBe(false);
-      expect(secondEditor.blockListElement?.hidden).toBe(true);
+      expect(firstPicker.blockListElement?.hidden).toBe(false);
+      expect(secondPicker.blockListElement?.hidden).toBe(true);
 
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
 
-      expect(firstEditor.blockListElement?.hidden).toBe(true);
-      expect(secondEditor.blockListElement?.hidden).toBe(true);
+      expect(firstPicker.blockListElement?.hidden).toBe(true);
+      expect(secondPicker.blockListElement?.hidden).toBe(true);
 
       insertButtonTwo.click();
 
-      expect(firstEditor.blockListElement?.hidden).toBe(true);
-      expect(secondEditor.blockListElement?.hidden).toBe(false);
+      expect(firstPicker.blockListElement?.hidden).toBe(true);
+      expect(secondPicker.blockListElement?.hidden).toBe(false);
     });
   });
 
@@ -833,18 +833,18 @@ describe("ContentBlockPicker", () => {
         <textarea data-module="content-block-highlight"></textarea>
         <textarea data-module="content-block-highlight"></textarea>
       `;
-      const editors = ContentBlockEditor.initAll({ baseUrl });
-      expect(editors.length).toBe(2);
-      expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
+      const pickers = ContentBlockPicker.initAll({ baseUrl });
+      expect(pickers.length).toBe(2);
+      expect(pickers[0]).toBeInstanceOf(ContentBlockPicker);
     });
 
     test("it initializes given a data module with multiple values", () => {
       document.body.innerHTML = `
         <textarea data-module="content-block-highlight some-other-module"></textarea>
       `;
-      const editors = ContentBlockEditor.initAll({ baseUrl });
-      expect(editors.length).toBe(1);
-      expect(editors[0]).toBeInstanceOf(ContentBlockEditor);
+      const pickers = ContentBlockPicker.initAll({ baseUrl });
+      expect(pickers.length).toBe(1);
+      expect(pickers[0]).toBeInstanceOf(ContentBlockPicker);
     });
 
     test("it passes baseUrl from options to API requests", async () => {
@@ -853,11 +853,11 @@ describe("ContentBlockPicker", () => {
         <textarea data-module="content-block-highlight">{{embed:contact:123}}</textarea>
       `;
 
-      const [editorInstance] = ContentBlockEditor.initAll({
+      const [pickerInstance] = ContentBlockPicker.initAll({
         baseUrl: "https://publisher.test",
       });
 
-      editorInstance.textarea.dispatchEvent(new Event("input"));
+      pickerInstance.textarea.dispatchEvent(new Event("input"));
 
       await vi.waitFor(() => {
         expect(fetchMock).toHaveBeenCalledWith(

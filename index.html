@@ -67,7 +67,7 @@
     <div class="govuk-width-container">
       <main class="govuk-main-wrapper" id="main-content">
         <div id="app">
-          <h1 class="govuk-heading-xl">Content Block Editor</h1>
+          <h1 class="govuk-heading-xl">Content Block Picker</h1>
           <button class="govuk-button" id="insert-content-block-button">
             Insert block
           </button>
@@ -123,8 +123,8 @@
       import "/scss/example.scss";
     </script>
     <script type="module">
-      import { ContentBlockEditor } from "/src/content-block-editor.ts";
-      new ContentBlockEditor(document.querySelector(".my-textarea"), {
+      import { ContentBlockPicker } from "/src/content-block-picker.ts";
+      new ContentBlockPicker(document.querySelector(".my-textarea"), {
         baseUrl: "http://localhost:5173/",
       });
     </script>

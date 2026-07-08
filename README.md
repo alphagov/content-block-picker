@@ -51,13 +51,13 @@ To initialise the picker on a textarea, add the `data-module="content-block-high
 Then initialise the Javascript:
 
 ```javascript
-import { ContentBlockEditor } from "content-block-editor";
+import { ContentBlockPicker } from "content-block-picker";
 
-ContentBlockEditor.initAll({
+ContentBlockPicker.initAll({
   baseUrl: "http://content-block-manager.dev.gov.uk",
 });
 // or
-ContentBlockEditor.initAll({
+ContentBlockPicker.initAll({
   baseUrl: "http://content-block-manager.dev.gov.uk",
   embedPreviewDelayMs: 500,
 });
@@ -81,7 +81,7 @@ Each textarea is wired to its own button, so multiple editors can appear on the 
 
 ## Demo
 
-You can see a [demo of the work so far here](https://alphagov.github.io/content-block-editor/)
+You can see a [demo of the work so far here](https://alphagov.github.io/content-block-picker/)
 
 ## Future work
 
