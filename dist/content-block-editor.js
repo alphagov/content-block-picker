@@ -161,16 +161,42 @@ var e = [
 	renderBlockListErrorState() {
 		this.blockListElement?.replaceChildren(document.createTextNode("Unable to load blocks."));
 	}
+	insertEmbedCode(e) {
+		let t = this.textarea.selectionStart ?? 0, n = this.textarea.selectionEnd ?? 0, r = this.textarea.value, { insertPosition: i, textEndPosition: a } = this.adjustInsertPositionIfSelectionOverlapsEmbedCode(t, n, r);
+		this.textarea.value = r.slice(0, i) + e + r.slice(a);
+		let o = i + e.length;
+		this.textarea.selectionStart = o, this.textarea.selectionEnd = o, this.textarea.dispatchEvent(new Event("input"));
+	}
+	adjustInsertPositionIfSelectionOverlapsEmbedCode(e, n, r) {
+		let i = r.matchAll(t), a = -1;
+		for (let t of i) {
+			let r = t.index, i = t.index + t[0].length;
+			(e >= r && e < i || n > r && n <= i || e < r && n > i) && (a = Math.max(a, i));
+		}
+		return a === -1 ? {
+			insertPosition: e,
+			textEndPosition: n
+		} : {
+			insertPosition: a,
+			textEndPosition: Math.max(n, a)
+		};
+	}
+	createBlockListButton(e, t) {
+		let n = document.createElement("button");
+		return n.type = "button", n.textContent = e, n.addEventListener("click", () => {
+			this.insertEmbedCode(t), this.textarea.focus();
+		}), n;
+	}
 	renderBlockList(e) {
 		if (!this.blockListElement) return;
 		let t = document.createElement("ul");
 		for (let n of e) {
 			let e = document.createElement("li");
-			if (e.append(document.createTextNode(n.title)), n.formats.length > 0) {
+			if (e.dataset.embedCode = n.embed_code, e.appendChild(this.createBlockListButton(n.title, n.embed_code)), n.formats.length > 0) {
 				let t = document.createElement("ul");
 				for (let e of n.formats) {
-					let n = document.createElement("li");
-					n.textContent = e, t.appendChild(n);
+					let r = `${n.embed_code.slice(0, -2)}#${e}}}`, i = document.createElement("li");
+					i.dataset.embedCode = r, i.appendChild(this.createBlockListButton(e, r)), t.appendChild(i);
 				}
 				e.appendChild(t);
 			}
