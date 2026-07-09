@@ -140,10 +140,18 @@ test.describe("List available blocks", () => {
     // Check first block (no formats)
     const firstBlock = topLevelList.locator("> li").first();
     await expect(firstBlock).toContainText("Pension Block A");
+    await expect(firstBlock).toHaveAttribute(
+      "data-embed-code",
+      "{{embed:content_block_pension:abc123}}",
+    );
 
     // Check second block (with formats)
     const secondBlock = topLevelList.locator("> li").nth(1);
     await expect(secondBlock).toContainText("Time Period Block B");
+    await expect(secondBlock).toHaveAttribute(
+      "data-embed-code",
+      "{{embed:content_block_time_period:def456}}",
+    );
 
     // Check that formats are displayed as nested list for second block
     const secondBlockFormatsList = secondBlock.locator("ul");
@@ -151,6 +159,14 @@ test.describe("List available blocks", () => {
     await expect(secondBlockFormatsList.locator("li")).toHaveCount(2);
     await expect(secondBlockFormatsList).toContainText("long_form");
     await expect(secondBlockFormatsList).toContainText("years");
+    await expect(secondBlockFormatsList.locator("li").first()).toHaveAttribute(
+      "data-embed-code",
+      "{{embed:content_block_time_period:def456#long_form}}",
+    );
+    await expect(secondBlockFormatsList.locator("li").nth(1)).toHaveAttribute(
+      "data-embed-code",
+      "{{embed:content_block_time_period:def456#years}}",
+    );
   });
 
   test("it hides the block list when clicking outside of it", async ({
@@ -216,5 +232,53 @@ test.describe("List available blocks", () => {
     // Block list should be visible with error message
     await expect(blockList).toHaveAttribute("aria-hidden", "false");
     await expect(blockList).toContainText("Unable to load blocks.");
+  });
+
+  test("it inserts the embed code into the textarea and returns focus when a block is clicked", async ({
+    page,
+  }) => {
+    const mockBlocks = {
+      results: [
+        {
+          title: "Pension Block A",
+          block_type: "Pension",
+          organisation: { name: "Test Org", content_id: "test-id-1" },
+          state: "published",
+          embed_code: "{{embed:content_block_pension:abc123}}",
+          formats: [],
+        },
+      ],
+    };
+
+    await page.route(/\/api\/blocks$/, (route) => {
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockBlocks),
+      });
+    });
+
+    const insertButton = page.locator("#insert-content-block-button");
+    const blockList = page.locator(".content-block-highlight__block-list");
+    const textarea = page.locator("textarea.content-block-highlight__input");
+
+    await insertButton.click();
+
+    // Wait for the block list to populate
+    const firstBlockButton = blockList.locator("li button").first();
+    await expect(firstBlockButton).toBeVisible();
+
+    await firstBlockButton.click();
+
+    // Embed code should appear in the textarea
+    await expect(textarea).toHaveValue(
+      "{{embed:content_block_pension:abc123}}",
+    );
+
+    // Block list should be dismissed
+    await expect(blockList).toHaveAttribute("aria-hidden", "true");
+
+    // Focus should have returned to the textarea
+    await expect(textarea).toBeFocused();
   });
 });

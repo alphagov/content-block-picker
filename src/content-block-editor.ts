@@ -187,6 +187,81 @@ export class ContentBlockEditor {
     );
   }
 
+  insertEmbedCode(embedCode: string) {
+    const selectionStart = this.textarea.selectionStart ?? 0;
+    const selectionEnd = this.textarea.selectionEnd ?? 0;
+    const currentValue = this.textarea.value;
+
+    const { insertPosition, textEndPosition } =
+      this.adjustInsertPositionIfSelectionOverlapsEmbedCode(
+        selectionStart,
+        selectionEnd,
+        currentValue,
+      );
+
+    this.textarea.value =
+      currentValue.slice(0, insertPosition) +
+      embedCode +
+      currentValue.slice(textEndPosition);
+
+    const newCursorPosition = insertPosition + embedCode.length;
+    this.textarea.selectionStart = newCursorPosition;
+    this.textarea.selectionEnd = newCursorPosition;
+
+    this.textarea.dispatchEvent(new Event("input"));
+  }
+
+  private adjustInsertPositionIfSelectionOverlapsEmbedCode(
+    selectionStart: number,
+    selectionEnd: number,
+    currentValue: string,
+  ): { insertPosition: number; textEndPosition: number } {
+    const embedCodeMatches = currentValue.matchAll(embedRegex);
+    let rightmostOverlapEnd = -1;
+
+    for (const match of embedCodeMatches) {
+      const matchStart = match.index!;
+      const matchEnd = match.index! + match[0].length;
+
+      // Check if selection overlaps with this embed code
+      const startOverlaps =
+        selectionStart >= matchStart && selectionStart < matchEnd;
+      const endOverlaps = selectionEnd > matchStart && selectionEnd <= matchEnd;
+      const fullyContains =
+        selectionStart < matchStart && selectionEnd > matchEnd;
+
+      if (startOverlaps || endOverlaps || fullyContains) {
+        rightmostOverlapEnd = Math.max(rightmostOverlapEnd, matchEnd);
+      }
+    }
+
+    if (rightmostOverlapEnd !== -1) {
+      return {
+        insertPosition: rightmostOverlapEnd,
+        textEndPosition: Math.max(selectionEnd, rightmostOverlapEnd),
+      };
+    }
+
+    return {
+      insertPosition: selectionStart,
+      textEndPosition: selectionEnd,
+    };
+  }
+
+  private createBlockListButton(
+    label: string,
+    embedCode: string,
+  ): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      this.insertEmbedCode(embedCode);
+      this.textarea.focus();
+    });
+    return button;
+  }
+
   private renderBlockList(blocks: ContentBlock[]) {
     if (!this.blockListElement) return;
 
@@ -194,14 +269,21 @@ export class ContentBlockEditor {
 
     for (const block of blocks) {
       const blockItem = document.createElement("li");
-      blockItem.append(document.createTextNode(block.title));
+      blockItem.dataset.embedCode = block.embed_code;
+      blockItem.appendChild(
+        this.createBlockListButton(block.title, block.embed_code),
+      );
 
       if (block.formats.length > 0) {
         const formatsList = document.createElement("ul");
 
         for (const format of block.formats) {
+          const formatEmbedCode = `${block.embed_code.slice(0, -2)}#${format}}}`;
           const formatItem = document.createElement("li");
-          formatItem.textContent = format;
+          formatItem.dataset.embedCode = formatEmbedCode;
+          formatItem.appendChild(
+            this.createBlockListButton(format, formatEmbedCode),
+          );
           formatsList.appendChild(formatItem);
         }
 

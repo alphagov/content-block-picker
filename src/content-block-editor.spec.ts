@@ -292,7 +292,7 @@ describe("ContentBlockPicker", () => {
       expect(observeSpy).toHaveBeenCalledWith(textarea);
     });
 
-    test("it shows a fetching message and then renders blocks when the configured insert button is clicked", async () => {
+    test("it shows a fetching message when the configured insert button is clicked", async () => {
       const { insertButton, editorInstance } = setupEditorWithInsertButton();
       const fetchAllBlocksMock = vi
         .spyOn(editorInstance.apiClient, "fetchAllBlocks")
@@ -310,6 +310,15 @@ describe("ContentBlockPicker", () => {
       expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
         "false",
       );
+    });
+
+    test("it renders blocks with their formats after fetching", async () => {
+      const { insertButton, editorInstance } = setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      insertButton.click();
 
       await vi.waitFor(() => {
         const topLevelList =
@@ -328,15 +337,30 @@ describe("ContentBlockPicker", () => {
       expect(topLevelItems[0].childNodes[0]?.textContent).toBe(
         "Sample Pension Block 1",
       );
+      expect(topLevelItems[0].dataset.embedCode).toBe(
+        "{{embed:content_block_pension:sample-pension-1}}",
+      );
       expect(topLevelItems[0].querySelector("ul")).toBeNull();
       expect(topLevelItems[1].childNodes[0]?.textContent).toBe(
         "Sample Time Period Block 1",
       );
-      expect(
-        Array.from(topLevelItems[1].querySelectorAll("ul > li")).map(
-          (item) => item.textContent,
-        ),
-      ).toEqual(["long_form", "years"]);
+      expect(topLevelItems[1].dataset.embedCode).toBe(
+        "{{embed:content_block_time_period:sample-time-1}}",
+      );
+      const formatItems = Array.from(
+        topLevelItems[1].querySelectorAll("ul > li"),
+      ) as HTMLLIElement[];
+
+      expect(formatItems.map((item) => item.textContent)).toEqual([
+        "long_form",
+        "years",
+      ]);
+      expect(formatItems[0].dataset.embedCode).toBe(
+        "{{embed:content_block_time_period:sample-time-1#long_form}}",
+      );
+      expect(formatItems[1].dataset.embedCode).toBe(
+        "{{embed:content_block_time_period:sample-time-1#years}}",
+      );
     });
 
     test("it positions the block list relative to the document, accounting for scroll", () => {
@@ -440,6 +464,311 @@ describe("ContentBlockPicker", () => {
       expect(editorInstance.blockListElement?.getAttribute("aria-hidden")).toBe(
         "true",
       );
+    });
+  });
+
+  describe("insertEmbedCode", () => {
+    test("it inserts the embed code at the caret position", () => {
+      editor.textarea.value = "before after";
+      editor.textarea.selectionStart = 7;
+      editor.textarea.selectionEnd = 7;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe("before {{embed:contact:123}}after");
+    });
+
+    test("it inserts at the beginning when the caret is at position 0", () => {
+      editor.textarea.value = "existing text";
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 0;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe("{{embed:contact:123}}existing text");
+    });
+
+    test("it replaces selected text with the embed code", () => {
+      editor.textarea.value = "replace me";
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 10;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe("{{embed:contact:123}}");
+    });
+
+    test("it moves the cursor to after the inserted embed code", () => {
+      editor.textarea.value = "text";
+      editor.textarea.selectionStart = 4;
+      editor.textarea.selectionEnd = 4;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      const expectedPosition = "text{{embed:contact:123}}".length;
+      expect(editor.textarea.selectionStart).toBe(expectedPosition);
+      expect(editor.textarea.selectionEnd).toBe(expectedPosition);
+    });
+
+    test("it dispatches an input event to update the highlight", () => {
+      const inputSpy = vi.fn();
+      editor.textarea.addEventListener("input", inputSpy);
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(inputSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test("it inserts after the closing braces if the caret is inside an embed code", () => {
+      editor.textarea.value = "text {{embed:contact:existing}} more text";
+      // Position caret inside the embed code (at the 'e' in 'existing')
+      editor.textarea.selectionStart = 20;
+      editor.textarea.selectionEnd = 20;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "text {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
+
+    test("it inserts after the embed code even when caret is at the start", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} more text";
+      // Position caret at the start of the embed code
+      editor.textarea.selectionStart = 7;
+      editor.textarea.selectionEnd = 7;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
+
+    test("it does not duplicate text when selected range is inside an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} more text";
+      // Selection is entirely inside the embed code.
+      editor.textarea.selectionStart = 15;
+      editor.textarea.selectionEnd = 20;
+
+      editor.insertEmbedCode("{{embed:contact:123}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:123}} more text",
+      );
+    });
+  });
+
+  describe("adjustInsertPositionIfSelectionOverlapsEmbedCode", () => {
+    test("it inserts after the embed code when selection starts before and ends inside", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select from "before " to middle of embed code
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 20;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}} after",
+      );
+    });
+
+    test("it inserts after the embed code when selection starts inside and ends after", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select from middle of embed code to " after"
+      editor.textarea.selectionStart = 20;
+      editor.textarea.selectionEnd = 43;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}}",
+      );
+    });
+
+    test("it inserts after the embed code when selection fully contains an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select entire line including the embed code
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 43;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}}",
+      );
+    });
+
+    test("it inserts after the rightmost embed code when selection overlaps multiple embed codes", () => {
+      editor.textarea.value =
+        "text {{embed:contact:first}} middle {{embed:contact:second}} end";
+      // Select from start of first embed to middle of second embed
+      editor.textarea.selectionStart = 5;
+      editor.textarea.selectionEnd = 50;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "text {{embed:contact:first}} middle {{embed:contact:second}}{{embed:contact:new}} end",
+      );
+    });
+
+    test("it preserves normal behavior when selection does not overlap with any embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select "after"
+      editor.textarea.selectionStart = 34;
+      editor.textarea.selectionEnd = 39;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}} {{embed:contact:new}}",
+      );
+    });
+
+    test("it handles selection at the exact boundary of an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select from the opening braces to the closing braces (entire embed code)
+      editor.textarea.selectionStart = 7;
+      editor.textarea.selectionEnd = 33;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}} after",
+      );
+    });
+
+    test("it handles selection that touches but does not overlap the start of an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select "before " (ends right before the embed code)
+      editor.textarea.selectionStart = 0;
+      editor.textarea.selectionEnd = 7;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "{{embed:contact:new}}{{embed:contact:existing}} after",
+      );
+    });
+
+    test("it handles selection that touches but does not overlap the end of an embed code", () => {
+      editor.textarea.value = "before {{embed:contact:existing}} after";
+      // Select " after" (starts right after the embed code)
+      editor.textarea.selectionStart = 33;
+      editor.textarea.selectionEnd = 39;
+
+      editor.insertEmbedCode("{{embed:contact:new}}");
+
+      expect(editor.textarea.value).toBe(
+        "before {{embed:contact:existing}}{{embed:contact:new}}",
+      );
+    });
+  });
+
+  describe("block list item clicks", () => {
+    test("it inserts the embed code and closes the list when a block item button is clicked", async () => {
+      const { insertButton, editorInstance, textareaWithButton } =
+        setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(
+          editorInstance.blockListElement?.querySelector("ul"),
+        ).not.toBeNull();
+      });
+
+      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+        "li button",
+      ) as HTMLButtonElement;
+      firstBlockButton.click();
+
+      expect(textareaWithButton.value).toBe(
+        "{{embed:content_block_pension:sample-pension-1}}",
+      );
+      expect(editorInstance.blockListElement?.hidden).toBe(true);
+    });
+
+    test("it inserts the format embed code when a format item button is clicked", async () => {
+      const { insertButton, editorInstance, textareaWithButton } =
+        setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(
+          editorInstance.blockListElement?.querySelector("ul"),
+        ).not.toBeNull();
+      });
+
+      const formatButton = editorInstance.blockListElement?.querySelector(
+        "li ul li button",
+      ) as HTMLButtonElement;
+      formatButton.click();
+
+      expect(textareaWithButton.value).toBe(
+        "{{embed:content_block_time_period:sample-time-1#long_form}}",
+      );
+      expect(editorInstance.blockListElement?.hidden).toBe(true);
+    });
+
+    test("it inserts at the current caret position in the textarea", async () => {
+      const { insertButton, editorInstance, textareaWithButton } =
+        setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      textareaWithButton.value = "start end";
+      textareaWithButton.selectionStart = 6;
+      textareaWithButton.selectionEnd = 6;
+
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(
+          editorInstance.blockListElement?.querySelector("ul"),
+        ).not.toBeNull();
+      });
+
+      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+        "li button",
+      ) as HTMLButtonElement;
+      firstBlockButton.click();
+
+      expect(textareaWithButton.value).toBe(
+        "start {{embed:content_block_pension:sample-pension-1}}end",
+      );
+    });
+
+    test("it returns focus to the textarea after inserting a block", async () => {
+      const { insertButton, editorInstance, textareaWithButton } =
+        setupEditorWithInsertButton();
+      vi.spyOn(editorInstance.apiClient, "fetchAllBlocks").mockResolvedValue(
+        sampleBlocks,
+      );
+
+      insertButton.click();
+
+      await vi.waitFor(() => {
+        expect(
+          editorInstance.blockListElement?.querySelector("ul"),
+        ).not.toBeNull();
+      });
+
+      const firstBlockButton = editorInstance.blockListElement?.querySelector(
+        "li button",
+      ) as HTMLButtonElement;
+      firstBlockButton.click();
+
+      expect(document.activeElement).toBe(textareaWithButton);
     });
   });
 
