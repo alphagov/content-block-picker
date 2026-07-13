@@ -118,6 +118,125 @@ Maintain a "virtual" cursor position in a shadow data structure, syncing periodi
 
 **Verdict**: Rejected as too complex and fragile.
 
+## Technical Implementation Details
+
+This section explains how Option 1 (event interception) addresses the core technical challenges of making embed codes behave as atomic units.
+
+### Maintaining an embed code position index
+
+On every `input` event, we scan `textarea.value` using the existing `embedRegex` to build an index of embed code locations:
+
+```typescript
+interface EmbedCodePosition {
+  start: number;  // inclusive
+  end: number;    // exclusive (position after last character)
+  code: string;
+}
+```
+
+This index is used by all event handlers to make positioning decisions. The scan is fast for typical documents (< 50 codes), but performance should be monitored.
+
+### 1. Selection expansion: "If I highlight a part of it, it's going to highlight the whole thing"
+
+**Mechanism:**
+- Listen to `selectionchange` events on the document
+- After any selection change, check if `textarea.selectionStart` or `textarea.selectionEnd` falls within an embed code's boundaries
+- If overlap detected, use `textarea.setSelectionRange()` to expand selection to encompass the entire code
+
+**Example:**
+```
+Text: "See {{embed:content_block:abc123}} for details"
+User drags from position 8 to 25
+Embed code spans positions 4 to 35
+Result: Selection expanded to 4-35 (entire embed code selected)
+```
+
+**Edge case:** If selection spans multiple embed codes, expand to include all partially-selected codes.
+
+### 2. Cursor positioning: "I can't put the cursor in the middle of them"
+
+**For mouse clicks:**
+- Listen to `mousedown` or `click` events on the textarea
+- Read `textarea.selectionStart` to determine intended cursor position
+- If position falls inside an embed code, prevent default and snap cursor to the nearest boundary:
+  - If closer to start, position cursor before the code
+  - If closer to end (or exactly at midpoint), position cursor after the code
+
+**For keyboard navigation (ArrowLeft, ArrowRight, Home, End):**
+- Listen to `keydown` events
+- Calculate the intended new cursor position
+- If new position would land inside an embed code:
+  - **ArrowRight**: Jump cursor to position after the code
+  - **ArrowLeft**: Jump cursor to position before the code
+  - **Home/End**: Allow normal behaviour (they naturally stop at line boundaries)
+
+**Example:**
+```
+Text: "See {{embed:content_block:abc123}} for details"
+Embed code spans positions 4 to 35
+User clicks at position 20 (inside code)
+Distance to start: 20 - 4 = 16
+Distance to end: 35 - 20 = 15
+Result: Cursor moved to position 35 (end boundary)
+```
+
+### 3. Atomic deletion: "If I attempt to delete part of it, it's going to delete the whole thing"
+
+**Mechanism:**
+- Listen to `keydown` for Backspace and Delete keys
+- Determine what would be deleted:
+  - **Backspace with cursor**: character at `selectionStart - 1`
+  - **Delete with cursor**: character at `selectionStart`
+  - **Either with selection**: entire selected range
+- Check if deletion range overlaps any embed code
+- If overlap detected:
+  - Prevent default deletion
+  - Delete the entire embed code using `textarea.setRangeText('', codeStart, codeEnd)`
+  - Position cursor at the deletion point (where the code started)
+
+**Example:**
+```
+Text: "See {{embed:content_block:abc123}} for details"
+Embed code spans positions 4 to 35
+User presses Backspace at position 36
+Would delete position 35 (last char of code)
+Result: Entire code (positions 4-35) deleted, cursor at position 4
+```
+
+**Multi-code case:** If selection spans multiple embed codes, delete all codes in the selection range.
+
+### 4. Insertion prevention: "Typing inside a code should position cursor outside"
+
+**Mechanism:**
+- Listen to `beforeinput` event (fires before `input`)
+- Check if `textarea.selectionStart` is inside an embed code
+- If yes:
+  - Prevent default insertion
+  - Move cursor to the end of the embed code
+  - Re-dispatch the input (if not conflicting with atomic behaviour)
+
+**For paste operations:**
+- Listen to `paste` event
+- If paste position is inside an embed code, move cursor to nearest boundary before allowing paste
+- Alternatively, prevent paste and show a user-friendly message
+
+### 5. Undo/redo considerations
+
+The browser's native undo stack should handle most scenarios, since we're using `setRangeText()` and `setSelectionRange()` which trigger undo snapshots. However, some browsers may not create undo boundaries for programmatic edits.
+
+Can we mandate a list of browsers that must be supported? If so, we can test and verify undo/redo behaviour across those browsers. If any browser fails to maintain expected undo behaviour, we may need to implement a custom undo stack for atomic edits.
+
+### Performance optimization
+
+For documents with many embed codes (50+), rescanning with regex on every `input` event may become a bottleneck.
+
+**Optimization strategies:**
+1. **Debounce rescanning**: Only rescan after a brief idle period (e.g., 50ms)
+2. **Incremental updates**: Track cursor position and only rescan the affected region
+3. **Caching**: Invalidate position cache only when content changes, not on cursor moves
+
+**Benchmark target:** Position index rebuild should take < 10ms for documents with 100 embed codes.
+
 ## Consequences
 
 ### Positive
