@@ -7,12 +7,12 @@ import {
 import { APIClient } from "./content-block/api-client.ts";
 import type { ContentBlock } from "./content-block/api-client.ts";
 
-export interface ContentBlockEditorOptions {
+export interface ContentBlockPickerOptions {
   baseUrl: string;
   embedPreviewDelayMs?: number;
 }
 
-export class ContentBlockEditor {
+export class ContentBlockPicker {
   readonly embedPreviewDelayMs: number;
   textarea: HTMLTextAreaElement;
   wrapper: HTMLDivElement;
@@ -25,7 +25,7 @@ export class ContentBlockEditor {
   blockListElement: HTMLDivElement | null = null;
   blockListRequest?: Promise<ContentBlock[]>;
 
-  constructor(element: Element, options: ContentBlockEditorOptions) {
+  constructor(element: Element, options: ContentBlockPickerOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
     this.textarea = this.initializeModule(element);
     this.wrapper = this.createWrapper();
@@ -440,15 +440,15 @@ export class ContentBlockEditor {
   }
 
   static initAll(
-    options: ContentBlockEditorOptions,
+    options: ContentBlockPickerOptions,
     scope: ParentNode = document,
-  ): ContentBlockEditor[] {
+  ): ContentBlockPicker[] {
     const elements = scope.querySelectorAll(
       '[data-module~="content-block-highlight"]',
     );
 
     return Array.from(elements).map(
-      (element) => new ContentBlockEditor(element, options),
+      (element) => new ContentBlockPicker(element, options),
     );
   }
 }
