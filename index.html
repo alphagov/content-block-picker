@@ -10,7 +10,7 @@
 
     <link rel="manifest" href="/assets/manifest.json" />
     <link href="govuk-frontend.css" rel="stylesheet" />
-    <link href="dist/content-block-editor.css" rel="stylesheet" />
+    <link href="dist/content-block-picker.css" rel="stylesheet" />
 
     <style>
       .my-textarea {
@@ -58,7 +58,7 @@
     <div class="govuk-width-container">
       <main class="govuk-main-wrapper" id="main-content">
         <div id="app">
-          <h1 class="govuk-heading-xl">Content Block Editor</h1>
+          <h1 class="govuk-heading-xl">Content Block Picker</h1>
           <textarea class="my-textarea govuk-textarea">
 How much basic State Pension you get depends on your National Insurance record.
 
@@ -165,8 +165,8 @@ You may be eligible for [other benefits and financial support](/cost-of-living).
       </div>
     </footer>
     <script type="module">
-      import { ContentBlockEditor } from "./dist/content-block-editor.js";
-      new ContentBlockEditor(document.querySelector(".my-textarea"));
+      import { ContentBlockPicker } from "./dist/content-block-picker.js";
+      new ContentBlockPicker(document.querySelector(".my-textarea"));
     </script>
     <script type="application/json" id="content-blocks">
       [

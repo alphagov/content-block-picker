@@ -276,4 +276,4 @@ var e = [
 	}
 };
 //#endregion
-export { s as ContentBlockEditor };
+export { s as ContentBlockPicker };
