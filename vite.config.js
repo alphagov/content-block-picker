@@ -30,7 +30,11 @@ export default defineConfig({
     preprocessorOptions: {
       scss: {
         quietDeps: true,
+        loadPaths: ["node_modules"],
       },
+    },
+    lightningcss: {
+      errorRecovery: true,
     },
   },
   resolve: {
