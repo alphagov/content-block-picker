@@ -4,7 +4,6 @@
 /.github/*
 /docs/*
 /e2e/*
-/scss/example.scss
 index.html
 playwright.config.js
 

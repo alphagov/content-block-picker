@@ -17,7 +17,7 @@ A lightweight, drop-in textarea highlighter for highlighting content blocks with
    npm run dev
    ```
 
-1. Access the [Example Picker](http://localhost:5173/)
+1. Access the [Demo Picker](http://localhost:5173/)
 1. Run tests
 
    ### Unit tests
