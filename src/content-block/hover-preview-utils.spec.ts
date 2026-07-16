@@ -55,9 +55,29 @@ describe("makeIframePayload", () => {
     const payload = makeIframePayload("<strong>Hi</strong>");
 
     expect(payload).toContain("<!DOCTYPE html>");
-    expect(payload).toContain("<html>");
+    expect(payload).toContain('<html lang="en">');
     expect(payload).toContain("<head>");
     expect(payload).toContain("<body>");
     expect(payload).toContain("</html>");
+  });
+
+  test("includes white-space: nowrap to prevent text wrapping", () => {
+    const payload = makeIframePayload("<span>Test</span>");
+
+    expect(payload).toContain("white-space: nowrap");
+  });
+
+  test("includes white background to prevent transparency", () => {
+    const payload = makeIframePayload("<span>Test</span>");
+
+    expect(payload).toContain("background: white");
+  });
+
+  test("includes logic to maintain initial width", () => {
+    const payload = makeIframePayload("<span>Test</span>");
+
+    expect(payload).toContain("let initialWidth = null");
+    expect(payload).toContain("initialWidth = width");
+    expect(payload).toContain("Math.max(width, initialWidth)");
   });
 });

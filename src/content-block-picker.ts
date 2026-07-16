@@ -59,11 +59,16 @@ export class ContentBlockPicker {
       this.attachBlockListHideListeners(this.blockListElement);
     }
     window.addEventListener("message", (event) => {
-      if (event.data && event.data.type === "resize-preview") {
-        if (this.preview instanceof HTMLIFrameElement) {
-          this.preview.style.height = `${event.data.height + 4}px`;
-          this.preview.style.width = `${event.data.width + 4}px`;
-        }
+      if (!event.data || event.data.type !== "resize-preview") {
+        return;
+      }
+
+      if (
+        this.preview instanceof HTMLIFrameElement &&
+        event.source === this.preview.contentWindow
+      ) {
+        this.preview.style.height = `${event.data.height + 4}px`;
+        this.preview.style.width = `${event.data.width + 4}px`;
       }
     });
 
