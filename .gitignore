@@ -6,7 +6,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-examples/dist
 dist
 dist-ssr
 *.local
@@ -23,3 +22,4 @@ dist-ssr
 *.sw?
 /playwright-report/*
 /test-results/.last-run.json
+/scss/*.css

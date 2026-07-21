@@ -1,5 +1,2 @@
-@import "govuk/settings/index";
-@import "govuk/helpers/index";
-
-@import "govuk/components/textarea";
+@import "govuk-frontend/dist/govuk/index";
 @import "./content-block-highlight.scss";

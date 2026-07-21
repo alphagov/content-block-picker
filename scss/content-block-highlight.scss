@@ -40,6 +40,16 @@ textarea.content-block-highlight__input {
   box-shadow: 0 2px 8px rgb(11 12 12 / 20%);
 }
 
+.content-block-highlight__preview-frame {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  outline: 2px solid $govuk-border-colour;
+  padding: 0.5rem;
+  background: $govuk-body-background-colour;
+  box-shadow: 0 2px 8px rgb(11 12 12 / 20%);
+}
+
 .content-block-highlight__block-list {
   position: absolute;
   z-index: 1000;

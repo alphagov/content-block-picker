@@ -6,8 +6,7 @@
   "module": "./dist/content-block-picker.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && npm run build-examples",
-    "build-examples": "rm -rf examples/dist && cp -r dist examples/dist",
+    "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest",
     "e2e-test": "playwright test",
