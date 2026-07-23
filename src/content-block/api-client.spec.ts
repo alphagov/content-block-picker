@@ -87,9 +87,13 @@ describe("APIClient", () => {
       .mockResolvedValueOnce(createErrorResponse(500))
       .mockResolvedValueOnce(createSuccessResponse(payload));
 
-    await expect(client.fetchPreview(embedCode)).rejects.toThrow(
-      "Failed to fetch block {{embed:contact:abc-123}}: 500",
-    );
+    await expect(client.fetchPreview(embedCode)).rejects.toMatchObject({
+      status: -1,
+      message: {
+        status: 500,
+        message: "Failed to fetch block {{embed:contact:abc-123}}",
+      },
+    });
 
     const result = await client.fetchPreview(embedCode);
 
@@ -138,11 +142,34 @@ describe("APIClient", () => {
   test("it rejects embed codes that do not match the supported syntax", async () => {
     const client = new APIClient(baseUrl);
 
-    await expect(client.fetchPreview("not an embed code")).rejects.toThrow(
-      "Invalid embed code: not an embed code",
-    );
+    await expect(
+      client.fetchPreview("not an embed code"),
+    ).rejects.toMatchObject({
+      status: -1,
+    });
 
     expect(fetchMock).not.toHaveBeenCalled();
+
+    const cachedResult = await client.fetchPreview("not an embed code");
+    expect(cachedResult).toEqual(result);
+    expect(fetchMock).not.toHaveBeenCalled(); // Still no fetch call
+  });
+
+  test("it allows retrieval of cached error results via get()", async () => {
+    const embedCode = "{{embed:contact:missing-123}}";
+    const client = new APIClient(baseUrl);
+
+    fetchMock.mockResolvedValue(createErrorResponse(404));
+
+    await client.fetchPreview(embedCode);
+
+    const cachedPromise = client.get(embedCode);
+    expect(cachedPromise).toBeDefined();
+
+    const result = await cachedPromise!;
+    expect(result.valid).toBe(false);
+    expect(result.html).toContain("Failed to fetch block");
+    expect(result.html).toContain("404");
   });
 
   describe("fetchAllBlocks", () => {
