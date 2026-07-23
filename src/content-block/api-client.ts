@@ -3,6 +3,7 @@
  */
 export interface EmbedCodePreview {
   html: string;
+  valid: boolean;
 }
 
 /**
@@ -76,6 +77,11 @@ export class APIClient {
       .then((data) => data.results);
   }
 
+  private logAndPromiseError(message: string): Promise<EmbedCodePreview> {
+    console.warn(message);
+    return Promise.resolve({ html: message, valid: false });
+  }
+
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
     if (this.cache.has(embedCode)) {
       return this.cache.get(embedCode)!;
@@ -84,34 +90,26 @@ export class APIClient {
     let url: string;
     try {
       url = this.buildUrl(embedCode);
-    } catch (error) {
-      return Promise.reject({
-        status: -1,
-        message: error,
-      });
+    } catch {
+      return this.logAndPromiseError("Invalid URL");
     }
 
     const promise = fetch(url)
-      .then((response) => {
+      .then(async (response): Promise<EmbedCodePreview> => {
         if (!response.ok) {
           this.cache.delete(embedCode);
           return this.logAndPromiseError(
             `Failed to fetch block ${embedCode} (${response.status})`,
           );
-          return Promise.reject({
-            status: response.status,
-            message: `Failed to fetch block ${embedCode}`,
-          });
         }
-        return response.text();
+        const html = await response.text();
+        return { html, valid: true };
       })
-      .then((html) => ({ html }))
-      .catch((error) => {
-        console.error(error);
-        return Promise.reject({
-          status: -1,
-          message: error,
-        });
+      .catch((error): Promise<EmbedCodePreview> => {
+        this.cache.delete(embedCode);
+        return this.logAndPromiseError(
+          `Error fetching block ${embedCode}: ${error instanceof Error ? error.message : String(error)}`,
+        );
       });
 
     this.cache.set(embedCode, promise);

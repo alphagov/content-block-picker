@@ -60,7 +60,7 @@ describe("APIClient", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(expectedUrl);
-    expect(result).toEqual(expectedPayload);
+    expect(result).toEqual({ ...expectedPayload, valid: true });
   });
 
   test("it reuses cached requests for the same embed code", async () => {
@@ -74,36 +74,32 @@ describe("APIClient", () => {
     const secondResult = await client.fetchPreview(embedCode);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(firstResult).toEqual(payload);
-    expect(secondResult).toEqual(payload);
+    expect(firstResult).toEqual({ ...payload, valid: true });
+    expect(secondResult).toEqual({ ...payload, valid: true });
   });
 
-  test("it removes failed requests from cache so retries can succeed", async () => {
+  test("it caches retries requests", async () => {
     const embedCode = "{{embed:contact:abc-123}}";
     const client = new APIClient("http://not-used.test");
-    const payload: BlockResponse = { html: "<p>Retry worked</p>" };
 
-    fetchMock
-      .mockResolvedValueOnce(createErrorResponse(500))
-      .mockResolvedValueOnce(createSuccessResponse(payload));
+    fetchMock.mockResolvedValue(createErrorResponse(500));
 
-    await expect(client.fetchPreview(embedCode)).rejects.toMatchObject({
-      status: -1,
-      message: {
-        status: 500,
-        message: "Failed to fetch block {{embed:contact:abc-123}}",
-      },
-    });
+    const firstResult = await client.fetchPreview(embedCode);
+    expect(firstResult.html).toContain("Failed to fetch block");
+    expect(firstResult.html).toContain("500");
 
-    const result = await client.fetchPreview(embedCode);
+    const secondResult = await client.fetchPreview(embedCode);
 
+    // Should only fetch once - the error is cached
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result).toEqual(payload);
+    expect(secondResult).toEqual(firstResult);
   });
 
   test("it returns a cached promise only when present", async () => {
     const embedCode = "{{embed:contact:abc-123}}";
-    const payload: BlockResponse = { html: "<p>Cached lookup</p>" };
+    const payload: BlockResponse = {
+      html: "<p>Cached lookup</p>",
+    };
     const client = new APIClient("http://not-used.test");
 
     fetchMock.mockResolvedValue(createSuccessResponse(payload));
@@ -112,7 +108,7 @@ describe("APIClient", () => {
 
     const pending = client.fetchPreview(embedCode);
     expect(client.get(embedCode)).toBe(pending);
-    await expect(pending).resolves.toEqual(payload);
+    await expect(pending).resolves.toEqual({ ...payload, valid: true });
   });
 
   test("buildUrl encodes the embed code in the render path", () => {
@@ -139,15 +135,12 @@ describe("APIClient", () => {
     );
   });
 
-  test("it rejects embed codes that do not match the supported syntax", async () => {
+  test("it returns error message for invalid embed codes", async () => {
     const client = new APIClient(baseUrl);
 
-    await expect(
-      client.fetchPreview("not an embed code"),
-    ).rejects.toMatchObject({
-      status: -1,
-    });
+    const result = await client.fetchPreview("not an embed code");
 
+    expect(result.html).toBe("Invalid URL");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

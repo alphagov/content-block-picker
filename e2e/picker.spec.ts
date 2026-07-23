@@ -53,6 +53,9 @@ test.describe("Content Block Picker", () => {
     const longContent = "Line\n".repeat(50) + "{{embed:contact:123}}";
     await textarea.fill(longContent);
 
+    const mark = highlight.locator("mark.content-block-highlight__mark");
+    await expect(mark).toBeVisible();
+
     // Scroll the textarea
     await textarea.evaluate((el) => {
       el.scrollTop = 100;
@@ -73,10 +76,14 @@ test.describe("Content Block Picker", () => {
     const unsafeText = "<b>Bold</b> {{embed:contact:123}}";
     await textarea.fill(unsafeText);
 
+    const mark = highlight.locator("mark.content-block-highlight__mark");
+    await expect(mark).toBeVisible();
+
     // The highlighter should escape < and >
     const html = await highlight.innerHTML();
     expect(html).toContain("&lt;b&gt;Bold&lt;/b&gt;");
-    expect(html).toContain('<mark class="content-block-highlight__mark">');
+    // Mark should have the base class (may also have --invalid modifier)
+    expect(html).toMatch(/content-block-highlight__mark/);
   });
 });
 
