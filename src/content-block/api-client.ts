@@ -3,6 +3,7 @@
  */
 export interface EmbedCodePreview {
   html: string;
+  valid: boolean;
 }
 
 /**
@@ -101,17 +102,14 @@ export class APIClient {
     }
 
     const promise = fetch(url)
-      .then((response) => {
+      .then(async (response): Promise<EmbedCodePreview> => {
         if (!response.ok) {
           return this.logAndPromiseError(
             `Failed to fetch block ${embedCode} (${response.status})`,
           );
-          return Promise.reject({
-            status: response.status,
-            message: `Failed to fetch block ${embedCode}`,
-          });
         }
-        return response.text();
+        const html = await response.text();
+        return { html, valid: true };
       })
       .catch((error): Promise<EmbedCodePreview> => {
         return this.logAndPromiseError(

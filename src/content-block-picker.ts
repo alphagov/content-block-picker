@@ -24,6 +24,7 @@ export class ContentBlockPicker {
   currentMarkUnderCursor: HTMLElement | null = null;
   blockListElement: HTMLDivElement | null = null;
   blockListRequest?: Promise<ContentBlock[]>;
+  updateHighlightId = 0;
 
   constructor(element: Element, options: ContentBlockPickerOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -309,6 +310,7 @@ export class ContentBlockPicker {
   }
 
   updateHighlight() {
+    const currentUpdateId = ++this.updateHighlightId;
     let text = this.textarea.value;
 
     if (text[text.length - 1] === "\n") {
@@ -321,20 +323,46 @@ export class ContentBlockPicker {
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    // Wrap matched embed codes with <mark>
-    text = text.replace(
-      embedRegex,
-      '<mark class="content-block-highlight__mark">$&</mark>',
+    const allEmbedCodes = Array.from(text.matchAll(embedRegex));
+    const previewPromises = allEmbedCodes.map((embedCode) =>
+      this.apiClient.fetchPreview(embedCode[0]).catch((error) => {
+        console.warn(`Failed to pre-fetch preview for ${embedCode[0]}`, error); // should never happen
+        return { html: "", valid: false };
+      }),
     );
 
-    this.highlight.innerHTML = text;
+    Promise.all(previewPromises).then((previews) => {
+      // Only apply results if this is still the latest updateHighlight call
+      if (currentUpdateId !== this.updateHighlightId) {
+        return;
+      }
 
-    const allEmbedCodes = text.matchAll(embedRegex);
-    for (const embedCode of allEmbedCodes) {
-      void this.apiClient
-        .fetchPreview(embedCode[0])
-        .catch((e) => console.error(e));
-    }
+      let result = "";
+      let lastIndex = 0;
+
+      allEmbedCodes.forEach((embedCode, index) => {
+        const preview = previews[index];
+        const matchStart = embedCode.index!;
+        const matchEnd = matchStart + embedCode[0].length;
+
+        // Append text before this match
+        result += text.slice(lastIndex, matchStart);
+
+        // Append the marked-up embed code
+        let css = "content-block-highlight__mark";
+        if (preview && !preview.valid) {
+          css += " content-block-highlight__mark--invalid";
+        }
+        result += `<mark class="${css}">${embedCode[0]}</mark>`;
+
+        lastIndex = matchEnd;
+      });
+
+      // Append any remaining text after the last match
+      result += text.slice(lastIndex);
+
+      this.highlight.innerHTML = result;
+    });
   }
 
   async onTextareaMouseMove(event: MouseEvent) {
