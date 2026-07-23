@@ -87,9 +87,13 @@ describe("APIClient", () => {
       .mockResolvedValueOnce(createErrorResponse(500))
       .mockResolvedValueOnce(createSuccessResponse(payload));
 
-    await expect(client.fetchPreview(embedCode)).rejects.toThrow(
-      "Failed to fetch block {{embed:contact:abc-123}}: 500",
-    );
+    await expect(client.fetchPreview(embedCode)).rejects.toMatchObject({
+      status: -1,
+      message: {
+        status: 500,
+        message: "Failed to fetch block {{embed:contact:abc-123}}",
+      },
+    });
 
     const result = await client.fetchPreview(embedCode);
 
@@ -138,9 +142,11 @@ describe("APIClient", () => {
   test("it rejects embed codes that do not match the supported syntax", async () => {
     const client = new APIClient(baseUrl);
 
-    await expect(client.fetchPreview("not an embed code")).rejects.toThrow(
-      "Invalid embed code: not an embed code",
-    );
+    await expect(
+      client.fetchPreview("not an embed code"),
+    ).rejects.toMatchObject({
+      status: -1,
+    });
 
     expect(fetchMock).not.toHaveBeenCalled();
   });

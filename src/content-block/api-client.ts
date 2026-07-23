@@ -85,24 +85,33 @@ export class APIClient {
     try {
       url = this.buildUrl(embedCode);
     } catch (error) {
-      return Promise.reject(error);
+      return Promise.reject({
+        status: -1,
+        message: error,
+      });
     }
 
     const promise = fetch(url)
       .then((response) => {
         if (!response.ok) {
           this.cache.delete(embedCode);
-          throw new Error(
-            `Failed to fetch block ${embedCode}: ${response.status}`,
+          return this.logAndPromiseError(
+            `Failed to fetch block ${embedCode} (${response.status})`,
           );
+          return Promise.reject({
+            status: response.status,
+            message: `Failed to fetch block ${embedCode}`,
+          });
         }
-
         return response.text();
       })
       .then((html) => ({ html }))
       .catch((error) => {
-        this.cache.delete(embedCode);
-        throw error;
+        console.error(error);
+        return Promise.reject({
+          status: -1,
+          message: error,
+        });
       });
 
     this.cache.set(embedCode, promise);
