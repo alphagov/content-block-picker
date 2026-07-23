@@ -16,40 +16,9 @@ var e = [
 	"\\}\\}",
 	")"
 ].join(""), t = new RegExp(e, "g"), n = RegExp(`^${e}$`), r = (e) => n.test(e), i = () => {
-	let e = document.createElement("iframe");
-	return e.className = "content-block-highlight__preview-frame", e.setAttribute("sandbox", "allow-scripts"), e.style.width = "300px", e.style.height = "0px", e.style.border = "none", e.style.pointerEvents = "none", e;
-}, a = (e) => `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <style>
-          body { margin: 0; padding: 3px; overflow: hidden; font-family: sans-serif; }
-          #preview-content { display: inline-block; }
-        </style>
-      </head>
-      <body>
-        <div id="preview-content">${e}</div>
-        <script>const updateDimensions = () => {
-              const el = document.getElementById('preview-content');
-              
-              const height = el.offsetHeight;
-              const width = el.offsetWidth;
-              
-              window.parent.postMessage({ 
-                type: 'resize-preview', 
-                height: height, 
-                width: width 
-              }, '*');
-            };
-            
-            window.addEventListener('load', updateDimensions);
-            if ('ResizeObserver' in window) {
-              new ResizeObserver(updateDimensions).observe(document.body);
-            }
-        <\/script>
-      </body>
-    </html> 
-    `, o = class {
+	let e = document.createElement("div");
+	return e.className = "content-block-highlight__preview", e.hidden = !0, e.setAttribute("aria-hidden", "true"), e;
+}, a = (e) => e, o = class {
 	cache = /* @__PURE__ */ new Map();
 	baseUrl;
 	API_BASE_PATH = "/api/blocks";
@@ -108,9 +77,7 @@ var e = [
 		let n = t.baseUrl;
 		this.apiClient = new o(n), this.textarea.classList.add("content-block-highlight__input"), this.updateHighlight(), this.textarea.addEventListener("input", () => this.updateHighlight()), this.textarea.addEventListener("scroll", () => {
 			this.syncScroll(), this.onTextareaMouseLeave();
-		}), this.textarea.addEventListener("mousemove", (e) => void this.onTextareaMouseMove(e)), this.textarea.addEventListener("mouseleave", () => this.onTextareaMouseLeave()), this.textarea.dataset.cbpInsertBlockButton && (this.blockListElement = this.createBlockListElement(), this.attachInsertBlockButtonListener(this.blockListElement), this.attachBlockListHideListeners(this.blockListElement)), window.addEventListener("message", (e) => {
-			e.data && e.data.type === "resize-preview" && this.preview instanceof HTMLIFrameElement && (this.preview.style.height = `${e.data.height + 4}px`, this.preview.style.width = `${e.data.width + 4}px`);
-		}), "ResizeObserver" in window && new ResizeObserver(() => this.syncScroll()).observe(this.textarea);
+		}), this.textarea.addEventListener("mousemove", (e) => void this.onTextareaMouseMove(e)), this.textarea.addEventListener("mouseleave", () => this.onTextareaMouseLeave()), this.textarea.dataset.cbpInsertBlockButton && (this.blockListElement = this.createBlockListElement(), this.attachInsertBlockButtonListener(this.blockListElement), this.attachBlockListHideListeners(this.blockListElement)), "ResizeObserver" in window && new ResizeObserver(() => this.syncScroll()).observe(this.textarea);
 	}
 	syncScroll() {
 		this.highlight.scrollTop = this.textarea.scrollTop, this.highlight.scrollLeft = this.textarea.scrollLeft;
@@ -255,7 +222,7 @@ var e = [
 		try {
 			let r = await n;
 			if (this.activeHoverEmbedCode !== t) return;
-			this.preview.srcdoc = a(r.html), this.positionHoverPreview(e), this.showElement(this.preview);
+			this.preview.innerHTML = a(r.html), this.positionHoverPreview(e), this.showElement(this.preview);
 		} catch (e) {
 			console.error(e), this.hideHoverPreview();
 		}

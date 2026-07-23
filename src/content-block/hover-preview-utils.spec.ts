@@ -1,83 +1,43 @@
 import { describe, test, expect, beforeEach } from "vitest";
 import {
   createHoverPreviewElement,
-  makeIframePayload,
+  makePreviewContent,
 } from "./hover-preview-utils";
 
 describe("createHoverPreviewElement", () => {
-  let preview: HTMLIFrameElement;
+  let preview: HTMLDivElement;
 
   beforeEach(() => {
     preview = createHoverPreviewElement();
   });
 
-  test("returns an iframe element", () => {
-    expect(preview.tagName).toBe("IFRAME");
+  test("returns a div element", () => {
+    expect(preview.tagName).toBe("DIV");
   });
 
   test("applies the expected class name", () => {
-    expect(preview.className).toBe("content-block-highlight__preview-frame");
+    expect(preview.className).toBe("content-block-highlight__preview");
   });
 
-  test("sets the sandbox attribute to allow scripts", () => {
-    expect(preview.getAttribute("sandbox")).toBe("allow-scripts");
+  test("is initially hidden", () => {
+    expect(preview.hidden).toBe(true);
   });
 
-  test("applies the expected inline styles", () => {
-    expect(preview.style.width).toBe("300px");
-    expect(preview.style.height).toBe("0px");
-    expect(preview.style.borderStyle).toBe("none");
-    expect(preview.style.pointerEvents).toBe("none");
+  test("has aria-hidden set to true", () => {
+    expect(preview.getAttribute("aria-hidden")).toBe("true");
   });
 });
 
-describe("makeIframePayload", () => {
-  test("injects the provided HTML inside the preview content container", () => {
+describe("makePreviewContent", () => {
+  test("returns the provided HTML unchanged", () => {
     const html = "<p>Preview block</p>";
-
-    const payload = makeIframePayload(html);
-
-    expect(payload).toContain(`<div id="preview-content">${html}</div>`);
+    const result = makePreviewContent(html);
+    expect(result).toBe(html);
   });
 
-  test("includes the script that posts resize messages", () => {
-    const payload = makeIframePayload("<span>Example</span>");
-
-    expect(payload).toContain("type: 'resize-preview'");
-    expect(payload).toContain("window.parent.postMessage");
-    expect(payload).toContain(
-      "window.addEventListener('load', updateDimensions)",
-    );
-    expect(payload).toContain("ResizeObserver");
-  });
-
-  test("returns a complete html document string", () => {
-    const payload = makeIframePayload("<strong>Hi</strong>");
-
-    expect(payload).toContain("<!DOCTYPE html>");
-    expect(payload).toContain('<html lang="en">');
-    expect(payload).toContain("<head>");
-    expect(payload).toContain("<body>");
-    expect(payload).toContain("</html>");
-  });
-
-  test("includes white-space: nowrap to prevent text wrapping", () => {
-    const payload = makeIframePayload("<span>Test</span>");
-
-    expect(payload).toContain("white-space: nowrap");
-  });
-
-  test("includes white background to prevent transparency", () => {
-    const payload = makeIframePayload("<span>Test</span>");
-
-    expect(payload).toContain("background: white");
-  });
-
-  test("includes logic to maintain initial width", () => {
-    const payload = makeIframePayload("<span>Test</span>");
-
-    expect(payload).toContain("let initialWidth = null");
-    expect(payload).toContain("initialWidth = width");
-    expect(payload).toContain("Math.max(width, initialWidth)");
+  test("does not modify complex HTML", () => {
+    const html = '<div class="test"><span>Content</span></div>';
+    const result = makePreviewContent(html);
+    expect(result).toBe(html);
   });
 });

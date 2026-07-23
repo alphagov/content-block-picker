@@ -2,7 +2,7 @@ import "../scss/base.scss";
 import embedRegex from "./content-block/regex.ts";
 import {
   createHoverPreviewElement,
-  makeIframePayload,
+  makePreviewContent,
 } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
 import type { ContentBlock } from "./content-block/api-client.ts";
@@ -17,7 +17,7 @@ export class ContentBlockPicker {
   textarea: HTMLTextAreaElement;
   wrapper: HTMLDivElement;
   highlight: HTMLDivElement;
-  preview: HTMLIFrameElement;
+  preview: HTMLDivElement;
   apiClient: APIClient;
   hoverPreviewTimeoutId?: number;
   activeHoverEmbedCode: string | null = null;
@@ -58,19 +58,6 @@ export class ContentBlockPicker {
       this.attachInsertBlockButtonListener(this.blockListElement);
       this.attachBlockListHideListeners(this.blockListElement);
     }
-    window.addEventListener("message", (event) => {
-      if (!event.data || event.data.type !== "resize-preview") {
-        return;
-      }
-
-      if (
-        this.preview instanceof HTMLIFrameElement &&
-        event.source === this.preview.contentWindow
-      ) {
-        this.preview.style.height = `${event.data.height + 4}px`;
-        this.preview.style.width = `${event.data.width + 4}px`;
-      }
-    });
 
     // checks for changes to the dimensions of the textarea, and syncs the scroll position of the highlight accordingly
     // see docs: https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
@@ -410,7 +397,7 @@ export class ContentBlockPicker {
       const preview = await cachedPreviewPromise;
       if (this.activeHoverEmbedCode !== embedCode) return;
 
-      this.preview.srcdoc = makeIframePayload(preview.html);
+      this.preview.innerHTML = makePreviewContent(preview.html, embedCode);
       this.positionHoverPreview(mark);
       this.showElement(this.preview);
     } catch (error) {
