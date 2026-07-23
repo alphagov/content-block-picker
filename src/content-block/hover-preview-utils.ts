@@ -1,67 +1,52 @@
-export const createHoverPreviewElement = (): HTMLIFrameElement => {
-  const iframe = document.createElement("iframe");
-  iframe.className = "content-block-highlight__preview-frame";
+import DOMPurify from "dompurify";
+import config from "../config.ts";
 
-  iframe.setAttribute("sandbox", "allow-scripts");
-  iframe.style.width = "300px";
-  iframe.style.height = "0px";
-  iframe.style.border = "none";
-  iframe.style.pointerEvents = "none";
-  return iframe;
+export const sanitizeHtml = (html: string, embedcode: string): string => {
+  const deniedTags = new Set<string>();
+
+  const hook = (_node, data) => {
+    const tagName =
+      typeof data.tagName === "string"
+        ? data.tagName.toLowerCase()
+        : data.tagName;
+
+    if (tagName && data.allowedTags[tagName] === undefined) {
+      if (tagName !== "body" && tagName !== "html") {
+        deniedTags.add(tagName);
+      }
+    }
+  };
+
+  DOMPurify.addHook("uponSanitizeElement", hook);
+
+  let sanitized: string;
+  try {
+    sanitized = DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: config.allowedHtmlTags,
+      ALLOWED_ATTR: config.allowedHtmlAttributes,
+      KEEP_CONTENT: true,
+    }) as string;
+  } finally {
+    DOMPurify.removeHook("uponSanitizeElement", hook);
+  }
+
+  if (deniedTags.size > 0) {
+    console.warn(
+      `Preview for ${embedcode} contained disallowed HTML tags which were removed: ${Array.from(deniedTags).join(", ")}`,
+    );
+  }
+
+  return sanitized;
 };
 
-export const makeIframePayload = (html: string): string => {
-  return `
-    <!DOCTYPE html>
-    <html lang="en">
-      <head>
-        <style>
-          body { margin: 0; padding: 3px; overflow: hidden; font-family: sans-serif; background: white; }
-          #preview-content { display: inline-block; white-space: nowrap; }
-        </style>
-      </head>
-      <body>
-        <div id="preview-content">${html}</div>
-        <script>let initialWidth = null;
-            
-            let targetOrigin = '*';
-            if (document.referrer) {
-              try {
-                const referrerUrl = new URL(document.referrer);
-                targetOrigin = referrerUrl.origin;
-              } catch (e) {
-                // Invalid URL, keep fallback
-              }
-            }
-            
-            const updateDimensions = () => {
-              const el = document.getElementById('preview-content');
-              
-              const height = el.offsetHeight;
-              const width = el.offsetWidth;
-              
-              // Capture initial width on first render
-              if (initialWidth === null) {
-                initialWidth = width;
-              }
-              
-              // Always use the maximum of current width and initial width
-              // to prevent shrinking below initial render size
-              const finalWidth = Math.max(width, initialWidth);
-              
-              window.parent.postMessage({ 
-                type: 'resize-preview', 
-                height: height, 
-                width: finalWidth 
-              }, targetOrigin);
-            };
-            
-            window.addEventListener('load', updateDimensions);
-            if ('ResizeObserver' in window) {
-              new ResizeObserver(updateDimensions).observe(document.body);
-            }
-        </script>
-      </body>
-    </html> 
-    `;
+export const createHoverPreviewElement = (): HTMLDivElement => {
+  const div = document.createElement("div");
+  div.className = "content-block-highlight__preview";
+  div.hidden = true;
+  div.setAttribute("aria-hidden", "true");
+  return div;
+};
+
+export const makePreviewContent = (html: string, embedcode: string): string => {
+  return sanitizeHtml(html, embedcode);
 };
