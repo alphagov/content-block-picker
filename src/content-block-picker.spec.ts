@@ -1,6 +1,10 @@
 import { expect, test, describe, beforeEach, vi } from "vitest";
 import { ContentBlockPicker } from "./content-block-picker.ts";
-import { BlockType, type ContentBlock } from "./content-block/api-client.ts";
+import {
+  BlockType,
+  ContentBlock,
+  EmbedCodePreview,
+} from "./content-block/api-client.ts";
 
 describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;
@@ -64,6 +68,13 @@ describe("ContentBlockPicker", () => {
       baseUrl,
     });
 
+    // Mock fetchPreview to return valid responses by default
+    vi.spyOn(pickerInstance.apiClient, "fetchPreview").mockResolvedValue({
+      html: "<p>Rendered</p>",
+      valid: true,
+      error: null,
+    });
+
     return { textareaWithButton, insertButton, pickerInstance };
   }
 
@@ -75,6 +86,13 @@ describe("ContentBlockPicker", () => {
     `;
     textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
     picker = new ContentBlockPicker(textarea, { baseUrl, embedPreviewDelayMs });
+
+    // Mock fetchPreview to return valid responses by default
+    vi.spyOn(picker.apiClient, "fetchPreview").mockResolvedValue({
+      html: "<p>Rendered</p>",
+      valid: true,
+      error: null,
+    });
   });
 
   describe("initializeModule", () => {
@@ -800,6 +818,19 @@ describe("ContentBlockPicker", () => {
       const [firstPicker, secondPicker] = ContentBlockPicker.initAll({
         baseUrl,
       });
+
+      // Mock fetchPreview for both pickers
+      vi.spyOn(firstPicker.apiClient, "fetchPreview").mockResolvedValue({
+        html: "<p>Rendered</p>",
+        valid: true,
+        error: null,
+      });
+      vi.spyOn(secondPicker.apiClient, "fetchPreview").mockResolvedValue({
+        html: "<p>Rendered</p>",
+        valid: true,
+        error: null,
+      });
+
       vi.spyOn(firstPicker.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );

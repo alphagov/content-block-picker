@@ -59,7 +59,7 @@ describe("APIClient", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(expectedUrl);
-    expect(result).toEqual(expectedPayload);
+    expect(result).toEqual({ ...expectedPayload, valid: true, error: null });
   });
 
   test("it reuses cached requests for the same embed code", async () => {
@@ -73,27 +73,27 @@ describe("APIClient", () => {
     const secondResult = await client.fetchPreview(embedCode);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(firstResult).toEqual(payload);
-    expect(secondResult).toEqual(payload);
+    expect(firstResult).toEqual({ ...payload, valid: true, error: null });
+    expect(secondResult).toEqual({ ...payload, valid: true, error: null });
   });
 
-  test("it removes failed requests from cache so retries can succeed", async () => {
+  test("it caches failed requests to prevent repeated failures", async () => {
     const embedCode = "{{embed:contact:abc-123}}";
     const client = new APIClient("http://not-used.test");
-    const payload: BlockResponse = { html: "<p>Retry worked</p>" };
 
-    fetchMock
-      .mockResolvedValueOnce(createErrorResponse(500))
-      .mockResolvedValueOnce(createSuccessResponse(payload));
+    fetchMock.mockResolvedValue(createErrorResponse(500));
 
-    await expect(client.fetchPreview(embedCode)).rejects.toThrow(
-      "Failed to fetch block {{embed:contact:abc-123}}: 500",
-    );
+    const firstResult = await client.fetchPreview(embedCode);
+    expect(firstResult.error).toBeInstanceOf(Error);
+    expect(firstResult.error!.message).toContain("Failed to fetch block");
+    expect(firstResult.html).toBeNull();
+    expect(firstResult.valid).toBe(false);
 
-    const result = await client.fetchPreview(embedCode);
+    const secondResult = await client.fetchPreview(embedCode);
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(result).toEqual(payload);
+    // Failed requests are now cached to enable hover preview feedback
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(secondResult).toEqual(firstResult);
   });
 
   test("it returns a cached promise only when present", async () => {
@@ -107,7 +107,11 @@ describe("APIClient", () => {
 
     const pending = client.fetchPreview(embedCode);
     expect(client.get(embedCode)).toBe(pending);
-    await expect(pending).resolves.toEqual(payload);
+    await expect(pending).resolves.toEqual({
+      ...payload,
+      valid: true,
+      error: null,
+    });
   });
 
   test("buildUrl encodes the embed code in the render path", () => {
@@ -134,14 +138,38 @@ describe("APIClient", () => {
     );
   });
 
-  test("it rejects embed codes that do not match the supported syntax", async () => {
+  test("it caches and returns specific error messages for invalid embed codes", async () => {
     const client = new APIClient(baseUrl);
 
-    await expect(client.fetchPreview("not an embed code")).rejects.toThrow(
-      "Invalid embed code: not an embed code",
-    );
+    const result = await client.fetchPreview("not an embed code");
 
+    expect(result.error).toBeInstanceOf(Error);
+    expect(result.error!.message).toContain("Invalid embed code");
+    expect(result.valid).toBe(false);
+    expect(result.html).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+
+    const cachedResult = await client.fetchPreview("not an embed code");
+    expect(cachedResult).toEqual(result);
+    expect(fetchMock).not.toHaveBeenCalled(); // Still no fetch call
+  });
+
+  test("it allows retrieval of cached error results via get()", async () => {
+    const embedCode = "{{embed:contact:missing-123}}";
+    const client = new APIClient(baseUrl);
+
+    fetchMock.mockResolvedValue(createErrorResponse(404));
+
+    await client.fetchPreview(embedCode);
+
+    const cachedPromise = client.get(embedCode);
+    expect(cachedPromise).toBeDefined();
+
+    const result = await cachedPromise!;
+    expect(result.valid).toBe(false);
+    expect(result.error).toBeInstanceOf(Error);
+    expect(result.error!.message).toContain("Failed to fetch block");
+    expect(result.html).toBeNull();
   });
 
   describe("fetchAllBlocks", () => {

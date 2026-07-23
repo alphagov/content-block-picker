@@ -1,9 +1,9 @@
 /**
  * Represents an embed code response from the API.
  */
-export interface EmbedCodePreview {
-  html: string;
-}
+export type EmbedCodePreview =
+  | { html: string; valid: true; error: null }
+  | { html: null; valid: false; error: Error };
 
 export enum BlockType {
   Pension = "Pension",
@@ -104,6 +104,18 @@ export class APIClient {
       .then((data) => data.results.filter(isSupportedContentBlock));
   }
 
+  private logAndPromiseError(
+    message: string,
+    error: Error | null = null,
+  ): Promise<EmbedCodePreview> {
+    console.warn(message, error);
+    return Promise.resolve({
+      html: null,
+      valid: false,
+      error: error ?? new Error(message),
+    });
+  }
+
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
     if (this.cache.has(embedCode)) {
       return this.cache.get(embedCode)!;
@@ -113,24 +125,29 @@ export class APIClient {
     try {
       url = this.buildUrl(embedCode);
     } catch (error) {
-      return Promise.reject(error);
+      const errorPromise = this.logAndPromiseError(
+        "Unable to build API URL",
+        error instanceof Error ? error : new Error(String(error)),
+      );
+      this.cache.set(embedCode, errorPromise);
+      return errorPromise;
     }
 
     const promise = fetch(url)
-      .then((response) => {
+      .then(async (response): Promise<EmbedCodePreview> => {
         if (!response.ok) {
-          this.cache.delete(embedCode);
-          throw new Error(
-            `Failed to fetch block ${embedCode}: ${response.status}`,
+          return this.logAndPromiseError(
+            `Failed to fetch block ${embedCode} (${response.status})`,
           );
         }
-
-        return response.text();
+        const html = await response.text();
+        return { html, valid: true, error: null };
       })
-      .then((html) => ({ html }))
-      .catch((error) => {
-        this.cache.delete(embedCode);
-        throw error;
+      .catch((error): Promise<EmbedCodePreview> => {
+        return this.logAndPromiseError(
+          `Error fetching block ${embedCode}: ${error instanceof Error ? error.message : String(error)}`,
+          error,
+        );
       });
 
     this.cache.set(embedCode, promise);
