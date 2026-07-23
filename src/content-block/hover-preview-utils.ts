@@ -4,22 +4,31 @@ import config from "../config.ts";
 export const sanitizeHtml = (html: string, embedcode: string): string => {
   const deniedTags = new Set<string>();
 
-  DOMPurify.addHook("uponSanitizeElement", (_node, data) => {
-    if (data.allowedTags[data.tagName] === undefined && data.tagName) {
-      if (data.tagName !== "body" && data.tagName !== "html") {
-        deniedTags.add(data.tagName);
+  const hook = (_node, data) => {
+    const tagName =
+      typeof data.tagName === "string"
+        ? data.tagName.toLowerCase()
+        : data.tagName;
+
+    if (tagName && data.allowedTags[tagName] === undefined) {
+      if (tagName !== "body" && tagName !== "html") {
+        deniedTags.add(tagName);
       }
     }
-  });
+  };
 
-  const sanitized = DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: config.allowedHtmlTags,
-    ALLOWED_ATTR: config.allowedHtmlAttributes,
-    KEEP_CONTENT: true,
-  });
+  DOMPurify.addHook("uponSanitizeElement", hook);
 
-  // Remove the hook after sanitization
-  DOMPurify.removeAllHooks();
+  let sanitized: string;
+  try {
+    sanitized = DOMPurify.sanitize(html, {
+      ALLOWED_TAGS: config.allowedHtmlTags,
+      ALLOWED_ATTR: config.allowedHtmlAttributes,
+      KEEP_CONTENT: true,
+    }) as string;
+  } finally {
+    DOMPurify.removeHook("uponSanitizeElement", hook);
+  }
 
   if (deniedTags.size > 0) {
     console.warn(
