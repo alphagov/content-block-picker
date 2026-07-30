@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, Mock, test, vi } from "vitest";
-import { APIClient } from "./api-client";
-import type { BlocksResponse } from "./api-client";
+import { APIClient, BlockType, type BlocksResponse } from "./api-client";
 
 interface BlockResponse {
   html: string;
@@ -150,7 +149,7 @@ describe("APIClient", () => {
       results: [
         {
           title: "Sample Pension Block 1",
-          block_type: "Pension",
+          block_type: BlockType.Pension,
           organisation: {
             name: "AI Security Institute",
             content_id: "11111111-2222-3333-4444-000000000000",
@@ -161,7 +160,7 @@ describe("APIClient", () => {
         },
         {
           title: "Sample Time Period Block 1",
-          block_type: "Time period",
+          block_type: BlockType.TimePeriod,
           organisation: {
             name: "AI Security Institute",
             content_id: "11111111-2222-3333-4444-000000000001",
@@ -204,6 +203,39 @@ describe("APIClient", () => {
       await expect(client.fetchAllBlocks()).rejects.toThrow(
         "Failed to fetch blocks: 500",
       );
+    });
+
+    test("it skips unsupported block types and warns", async () => {
+      const client = new APIClient(baseUrl);
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const payloadWithUnsupportedType: BlocksResponse = {
+        results: [
+          ...payload.results,
+          {
+            title: "Unsupported Block",
+            block_type: "Unknown" as BlockType,
+            organisation: {
+              name: "AI Security Institute",
+              content_id: "11111111-2222-3333-4444-000000000999",
+            },
+            state: "published",
+            embed_code: "{{embed:content_block_unknown:sample-unknown-1}}",
+            formats: [],
+          },
+        ],
+      };
+
+      fetchMock.mockResolvedValue(
+        createJsonResponse(payloadWithUnsupportedType),
+      );
+
+      const result = await client.fetchAllBlocks();
+
+      expect(result).toEqual(payload.results);
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Skipping unsupported block type "Unknown" for block "Unsupported Block".',
+      );
+      warnSpy.mockRestore();
     });
   });
 });
