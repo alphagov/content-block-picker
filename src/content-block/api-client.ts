@@ -50,14 +50,17 @@ export interface BlocksResponse {
 import { isValidEmbedCode } from "./regex.ts";
 
 const supportedBlockTypes = new Set<string>(Object.values(BlockType));
+const EXCLUDED_TITLE_PREFIX = "E2E";
 
 function isSupportedBlockType(blockType: string): blockType is BlockType {
   return supportedBlockTypes.has(blockType);
 }
 
-function isSupportedContentBlock(
-  block: ContentBlockApiResponse,
-): block is ContentBlock {
+function isSupportedContentBlock(block: ContentBlock): boolean {
+  if (block.title.startsWith(EXCLUDED_TITLE_PREFIX)) {
+    return false;
+  }
+
   if (isSupportedBlockType(block.block_type)) {
     return true;
   }

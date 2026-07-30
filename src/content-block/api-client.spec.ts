@@ -237,5 +237,31 @@ describe("APIClient", () => {
       );
       warnSpy.mockRestore();
     });
+
+    test('it skips blocks with titles that start with "E2E Test"', async () => {
+      const client = new APIClient(baseUrl);
+      const payloadWithE2ETestTitle: BlocksResponse = {
+        results: [
+          ...payload.results,
+          {
+            title: "E2E Test Pension Block",
+            block_type: BlockType.Pension,
+            organisation: {
+              name: "AI Security Institute",
+              content_id: "11111111-2222-3333-4444-000000000998",
+            },
+            state: "published",
+            embed_code: "{{embed:content_block_pension:e2e-test-pension-1}}",
+            formats: [],
+          },
+        ],
+      };
+
+      fetchMock.mockResolvedValue(createJsonResponse(payloadWithE2ETestTitle));
+
+      const result = await client.fetchAllBlocks();
+
+      expect(result).toEqual(payload.results);
+    });
   });
 });
