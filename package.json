@@ -32,6 +32,6 @@
   },
   "dependencies": {
     "dompurify": "^3.4.12",
-    "govuk-frontend": "^6.3.0"
+    "govuk-frontend": "^6.4.0"
   }
 }
