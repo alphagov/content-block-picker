@@ -99,7 +99,7 @@ test.describe("List available blocks", () => {
         },
         {
           title: "Time Period Block B",
-          block_type: "Time period",
+          block_type: "Time Period",
           organisation: {
             name: "Test Org",
             content_id: "test-id-2",

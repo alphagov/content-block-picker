@@ -1,6 +1,6 @@
 import { expect, test, describe, beforeEach, vi } from "vitest";
 import { ContentBlockPicker } from "./content-block-picker.ts";
-import type { ContentBlock } from "./content-block/api-client.ts";
+import { BlockType, type ContentBlock } from "./content-block/api-client.ts";
 
 describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;
@@ -11,7 +11,7 @@ describe("ContentBlockPicker", () => {
   const sampleBlocks: ContentBlock[] = [
     {
       title: "Sample Pension Block 1",
-      block_type: "Pension",
+      block_type: BlockType.Pension,
       organisation: {
         name: "AI Security Institute",
         content_id: "11111111-2222-3333-4444-000000000000",
@@ -22,7 +22,7 @@ describe("ContentBlockPicker", () => {
     },
     {
       title: "Sample Time Period Block 1",
-      block_type: "Time period",
+      block_type: BlockType.TimePeriod,
       organisation: {
         name: "AI Security Institute",
         content_id: "11111111-2222-3333-4444-000000000001",

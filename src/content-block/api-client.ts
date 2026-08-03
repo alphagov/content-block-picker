@@ -5,6 +5,12 @@ export interface EmbedCodePreview {
   html: string;
 }
 
+export enum BlockType {
+  Pension = "Pension",
+  Contact = "Contact",
+  TimePeriod = "Time Period",
+}
+
 /**
  * The organisation that owns a content block.
  */
@@ -18,7 +24,7 @@ export interface ContentBlockOrganisation {
  */
 export interface ContentBlock {
   title: string;
-  block_type: string; // Maybe an enum in the future
+  block_type: BlockType;
   organisation: ContentBlockOrganisation;
   state: string;
   embed_code: string;
@@ -42,6 +48,28 @@ export interface BlocksResponse {
  */
 
 import { isValidEmbedCode } from "./regex.ts";
+
+const supportedBlockTypes = new Set<string>(Object.values(BlockType));
+const EXCLUDED_TITLE_PREFIX = "E2E";
+
+function isSupportedBlockType(blockType: string): blockType is BlockType {
+  return supportedBlockTypes.has(blockType);
+}
+
+function isSupportedContentBlock(block: ContentBlock): boolean {
+  if (block.title.startsWith(EXCLUDED_TITLE_PREFIX)) {
+    return false;
+  }
+
+  if (isSupportedBlockType(block.block_type)) {
+    return true;
+  }
+
+  console.warn(
+    `Skipping unsupported block type "${block.block_type}" for block "${block.title}".`,
+  );
+  return false;
+}
 
 export class APIClient {
   private cache = new Map<string, Promise<EmbedCodePreview>>();
@@ -73,7 +101,7 @@ export class APIClient {
 
         return response.json() as Promise<BlocksResponse>;
       })
-      .then((data) => data.results);
+      .then((data) => data.results.filter(isSupportedContentBlock));
   }
 
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
