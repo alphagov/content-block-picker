@@ -403,7 +403,10 @@ export class ContentBlockPicker {
       const preview = await cachedPreviewPromise;
       if (this.activeHoverEmbedCode !== embedCode || !preview.html) return;
 
-      this.preview.innerHTML = makePreviewContent(preview.html, embedCode);
+      const blockData = await this.apiClient.fetchBlock(embedCode);
+
+      if (this.activeHoverEmbedCode !== embedCode) return;
+      this.preview.innerHTML = makePreviewContent(preview.html, blockData);
       this.positionHoverPreview(mark);
       this.showElement(this.preview);
     } catch (error) {

@@ -4,6 +4,7 @@ import {
   makePreviewContent,
   sanitizeHtml,
 } from "./hover-preview-utils";
+import { BlockType } from "../@types";
 
 describe("createHoverPreviewElement", () => {
   let preview: HTMLDivElement;
@@ -171,12 +172,24 @@ describe("sanitizeHtml", () => {
 });
 
 describe("makePreviewContent", () => {
+  const blockData = {
+    title: "Sample Contact",
+    block_type: BlockType.Contact,
+    organisation: {
+      name: "AI Security Institute",
+      content_id: "3a279946-1880-410e-ad4e-eb3cef22e210",
+    },
+    state: "published",
+    embed_code: "{{embed:content_block_contact:sample-contact-2}}",
+    formats: [],
+  };
+
   test("sanitizes the provided HTML", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const html = "<p>Safe</p><section>wrapped</section>";
-    const result = makePreviewContent(html, "embedcode");
+    const result = makePreviewContent(html, blockData);
 
-    expect(result).toBe("<p>Safe</p>wrapped");
+    expect(result).toContain("<p>Safe</p>wrapped");
     expect(warnSpy).toHaveBeenCalled();
 
     warnSpy.mockRestore();
@@ -184,7 +197,9 @@ describe("makePreviewContent", () => {
 
   test("returns sanitized HTML unchanged if already safe", () => {
     const html = "<div><p>Safe content</p><strong>Bold</strong></div>";
-    const result = makePreviewContent(html, "embedcode");
-    expect(result).toBe(html);
+    const result = makePreviewContent(html, blockData);
+    expect(result).toContain(
+      "<div><p>Safe content</p><strong>Bold</strong></div>",
+    );
   });
 });

@@ -1,5 +1,8 @@
 import DOMPurify, { UponSanitizeElementHookEvent } from "dompurify";
 import config from "../config.ts";
+import { ContentBlock } from "../@types";
+import env from "../nunjucks-env.ts";
+import blockListTemplate from "../templates/hover-preview.njk?raw";
 
 export const sanitizeHtml = (html: string, embedcode: string): string => {
   const deniedTags = new Set<string>();
@@ -46,6 +49,12 @@ export const createHoverPreviewElement = (): HTMLDivElement => {
   return div;
 };
 
-export const makePreviewContent = (html: string, embedcode: string): string => {
-  return sanitizeHtml(html, embedcode);
+export const makePreviewContent = (
+  html: string,
+  blockData: ContentBlock,
+): string => {
+  return env.renderString(blockListTemplate, {
+    html: sanitizeHtml(html, blockData.embed_code),
+    blockData,
+  });
 };

@@ -1,0 +1,15 @@
+<div style="background: lightgrey; padding: 1em;">
+    <dl class="govuk-list">
+        <dt>Title</dt>
+        <dd>{{ blockData.title | escape }}</dd>
+        <dt>Type</dt>
+        <dd>{{ blockData.block_type | escape }}</dd>
+        <dt>Organisation</dt>
+        <dd>{{ blockData.organisation.name | escape }}</dd>
+        <dt>State</dt>
+        <dd>{{ blockData.state | escape }}</dd>
+    </dl>
+  <div style="background: white; padding: 1em; margin-top: 1em;">
+    {{ html | safe }}
+  </div>
+</div>
