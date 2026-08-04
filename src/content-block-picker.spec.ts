@@ -1,10 +1,6 @@
 import { expect, test, describe, beforeEach, vi } from "vitest";
 import { ContentBlockPicker } from "./content-block-picker.ts";
-import {
-  BlockType,
-  ContentBlock,
-  EmbedCodePreview,
-} from "./content-block/api-client.ts";
+import { BlockType, ContentBlock, EmbedCodePreview } from "./@types";
 
 describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;

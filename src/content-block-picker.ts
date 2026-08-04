@@ -5,10 +5,9 @@ import {
   makePreviewContent,
 } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
-import type {
-  ContentBlock,
-  EmbedCodePreview,
-} from "./content-block/api-client.ts";
+import type { ContentBlock, EmbedCodePreview } from "./@types";
+import nunjucksEnv from "./nunjucks-env.ts";
+import blockListTemplate from "./templates/block-list.njk?raw";
 
 export interface ContentBlockPickerOptions {
   baseUrl: string;
