@@ -5,7 +5,7 @@ import {
   makePreviewContent,
 } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
-import type { ContentBlock } from "./content-block/api-client.ts";
+import { ContentBlock } from "./@types";
 
 export interface ContentBlockPickerOptions {
   baseUrl: string;

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, Mock, test, vi } from "vitest";
-import { APIClient, BlockType, type BlocksResponse } from "./api-client";
+import { APIClient } from "./api-client";
+import { BlocksResponse, BlockType } from "../@types";
 
 interface BlockResponse {
   html: string;
