@@ -73,6 +73,36 @@ export class APIClient {
     });
   }
 
+  fetchBlock(embedCode: string): Promise<ContentBlock> {
+    const baseEmbedCode = embedCode.split("#")[0];
+    const url = new URL(
+      `${this.BLOCKS_PATH}/?keyword=${encodeURIComponent(baseEmbedCode)}`,
+      this.baseUrl,
+    ).toString();
+
+    return fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch block ${embedCode}: ${response.status}`,
+          );
+        }
+
+        return response.json() as Promise<BlocksResponse>;
+      })
+      .then((data) => {
+        const block = data.results.find(
+          (b) => b.embed_code === baseEmbedCode && isSupportedContentBlock(b),
+        );
+        if (!block) {
+          throw new Error(
+            `Unsupported block type for embed code ${embedCode}.`,
+          );
+        }
+        return block;
+      });
+  }
+
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
     if (this.cache.has(embedCode)) {
       return this.cache.get(embedCode)!;
