@@ -38,6 +38,18 @@ describe("ContentBlockPicker", () => {
       ok: true,
       status: 200,
       text: vi.fn().mockResolvedValue("<p>Rendered</p>"),
+      json: vi.fn().mockResolvedValue({
+        results: [
+          {
+            title: "Test",
+            block_type: "Contact",
+            organisation: { name: "Org", content_id: "1" },
+            state: "published",
+            embed_code: "{{embed:contact:123}}",
+            formats: [],
+          },
+        ],
+      }),
     } as unknown as Response);
 
     vi.stubGlobal("fetch", fetchMock);

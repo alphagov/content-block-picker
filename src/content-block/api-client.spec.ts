@@ -293,4 +293,83 @@ describe("APIClient", () => {
       expect(result).toEqual(payload.results);
     });
   });
+
+  describe("fetchBlock", () => {
+    const embedCode = "{{embed:content_block_pension:sample-pension-1}}";
+    const block = {
+      title: "Sample Pension Block 1",
+      block_type: BlockType.Pension,
+      organisation: {
+        name: "AI Security Institute",
+        content_id: "11111111-2222-3333-4444-000000000000",
+      },
+      state: "published",
+      embed_code: embedCode,
+      formats: [],
+    };
+    const payload: BlocksResponse = { results: [block] };
+
+    test("it fetches the specified block", async () => {
+      const client = new APIClient(baseUrl);
+
+      fetchMock.mockResolvedValue(createJsonResponse(payload));
+
+      const result = await client.fetchBlock(embedCode);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${baseUrl}/api/blocks/?keyword=${encodeURIComponent(embedCode)}`,
+      );
+      expect(result).toEqual(block);
+    });
+
+    test("it throws when the response is not ok", async () => {
+      const client = new APIClient(baseUrl);
+
+      fetchMock.mockResolvedValue(createErrorResponse(404));
+
+      await expect(client.fetchBlock(embedCode)).rejects.toThrow(
+        `Failed to fetch block ${embedCode}: 404`,
+      );
+    });
+
+    test("it throws when the block type is unsupported", async () => {
+      const client = new APIClient(baseUrl);
+      const unsupportedPayload: BlocksResponse = {
+        results: [
+          {
+            ...block,
+            block_type: "Unknown" as BlockType,
+            title: "Unsupported Block",
+          },
+        ],
+      };
+
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      fetchMock.mockResolvedValue(createJsonResponse(unsupportedPayload));
+
+      await expect(client.fetchBlock(embedCode)).rejects.toThrow(
+        `Unsupported block type for embed code {{embed:content_block_pension:sample-pension-1}}.`,
+      );
+      warnSpy.mockRestore();
+    });
+
+    test("it throws when the block title has excluded prefix", async () => {
+      const client = new APIClient(baseUrl);
+      const excludedPayload: BlocksResponse = {
+        results: [
+          {
+            ...block,
+            title: "E2E Test Block",
+          },
+        ],
+      };
+
+      fetchMock.mockResolvedValue(createJsonResponse(excludedPayload));
+
+      await expect(client.fetchBlock(embedCode)).rejects.toThrow(
+        `for embed code {{embed:content_block_pension:sample-pension-1}}`,
+      );
+    });
+  });
 });
