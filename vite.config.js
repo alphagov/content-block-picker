@@ -5,6 +5,7 @@ const cbmEndpoint =
   process.env.CBM_ENDPOINT || "http://content-block-manager.dev.gov.uk";
 
 export default defineConfig({
+  assetsInclude: ["**/*.njk"],
   server: {
     proxy: {
       "/api": {
