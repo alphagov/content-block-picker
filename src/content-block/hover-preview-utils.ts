@@ -1,12 +1,10 @@
-import DOMPurify from "dompurify";
+import DOMPurify, { UponSanitizeElementHookEvent } from "dompurify";
 import config from "../config.ts";
 
 export const sanitizeHtml = (html: string, embedcode: string): string => {
   const deniedTags = new Set<string>();
 
-  // DOMPurify hook types are complex and vary by hook name, using any for flexibility
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const hook = (_node: any, data: any) => {
+  const hook = (_node: Node, data: UponSanitizeElementHookEvent) => {
     const tagName =
       typeof data.tagName === "string"
         ? data.tagName.toLowerCase()
@@ -21,24 +19,23 @@ export const sanitizeHtml = (html: string, embedcode: string): string => {
 
   DOMPurify.addHook("uponSanitizeElement", hook);
 
-  let sanitized: string;
   try {
-    sanitized = DOMPurify.sanitize(html, {
+    const sanitized = DOMPurify.sanitize(html, {
       ALLOWED_TAGS: config.allowedHtmlTags,
       ALLOWED_ATTR: config.allowedHtmlAttributes,
       KEEP_CONTENT: true,
     }) as string;
+
+    if (deniedTags.size > 0) {
+      console.warn(
+        `Preview for ${embedcode} contained disallowed HTML tags which were removed: ${Array.from(deniedTags).join(", ")}`,
+      );
+    }
+
+    return sanitized;
   } finally {
-    DOMPurify.removeHook("uponSanitizeElement", hook);
+    DOMPurify.removeHook("uponSanitizeElement");
   }
-
-  if (deniedTags.size > 0) {
-    console.warn(
-      `Preview for ${embedcode} contained disallowed HTML tags which were removed: ${Array.from(deniedTags).join(", ")}`,
-    );
-  }
-
-  return sanitized;
 };
 
 export const createHoverPreviewElement = (): HTMLDivElement => {
