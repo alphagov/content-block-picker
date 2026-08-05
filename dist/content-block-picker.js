@@ -757,11 +757,14 @@ function Ke() {
 		let d = H ? i.outerHTML : i.innerHTML;
 		return H && I["!doctype"] && i.ownerDocument && i.ownerDocument.doctype && i.ownerDocument.doctype.name && T(Le, i.ownerDocument.doctype.name) && (d = "<!DOCTYPE " + i.ownerDocument.doctype.name + ">\n" + d), B && (d = ln(d)), w && wt ? P(d) : d;
 	}, t.setConfig = function() {
-		Yt(arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {}), yt = !0, bt = I, xt = L;
+		let e = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : {};
+		Yt(e), yt = !0, bt = I, xt = L;
 	}, t.clearConfig = function() {
 		Y = null, yt = !1, bt = null, xt = null, w = me, D = "";
 	}, t.isValidAttribute = function(e, t, n) {
-		return Y || Yt({}), gn(J(e), J(t), n);
+		Y || Yt({});
+		let r = J(e), i = J(t);
+		return gn(r, i, n);
 	}, t.addHook = function(e, t) {
 		typeof t == "function" && C(F, e) && y(F[e], t);
 	}, t.removeHook = function(e, t) {
@@ -780,23 +783,29 @@ function Ke() {
 }
 var N = Ke(), qe = {
 	embedHighlightColour: "ffa500",
-	allowedHtmlTags: /* @__PURE__ */ "a.abbr.blockquote.br.code.div.em.h1.h2.h3.h4.h5.h6.hr.li.ol.p.pre.span.strong.sub.sup.table.tbody.td.tfoot.th.thead.tr.ul".split("."),
+	allowedHtmlTags: /* @__PURE__ */ "#comment.a.abbr.blockquote.br.code.dd.div.dl.dt.em.h1.h2.h3.h4.h5.h6.hr.li.ol.p.pre.span.strong.sub.sup.table.tbody.td.tfoot.th.thead.tr.ul".split("."),
 	allowedHtmlAttributes: ["href"]
-}, P = (e) => {
-	let t = /* @__PURE__ */ new Set();
-	N.addHook("uponSanitizeElement", (e, n) => {
-		n.allowedTags[n.tagName] === void 0 && n.tagName && n.tagName !== "body" && n.tagName !== "html" && t.add(n.tagName);
-	});
-	let n = N.sanitize(e, {
-		ALLOWED_TAGS: qe.allowedHtmlTags,
-		ALLOWED_ATTR: qe.allowedHtmlAttributes,
-		KEEP_CONTENT: !0
-	});
-	return N.removeAllHooks(), t.size > 0 && console.warn(`Content block preview contained disallowed HTML tags which were removed: ${Array.from(t).join(", ")}`), n;
+}, P = (e, t) => {
+	let n = /* @__PURE__ */ new Set(), r = (e, t) => {
+		let r = typeof t.tagName == "string" ? t.tagName.toLowerCase() : t.tagName;
+		r && t.allowedTags[r] === void 0 && r !== "body" && r !== "html" && n.add(r);
+	};
+	N.addHook("uponSanitizeElement", r);
+	let i;
+	try {
+		i = N.sanitize(e, {
+			ALLOWED_TAGS: qe.allowedHtmlTags,
+			ALLOWED_ATTR: qe.allowedHtmlAttributes,
+			KEEP_CONTENT: !0
+		});
+	} finally {
+		N.removeHook("uponSanitizeElement", r);
+	}
+	return n.size > 0 && console.warn(`Preview for ${t} contained disallowed HTML tags which were removed: ${Array.from(n).join(", ")}`), i;
 }, Je = () => {
 	let e = document.createElement("div");
 	return e.className = "content-block-highlight__preview", e.hidden = !0, e.setAttribute("aria-hidden", "true"), e;
-}, Ye = (e) => P(e), Xe = class {
+}, Ye = (e, t) => P(e, t), Xe = class {
 	cache = /* @__PURE__ */ new Map();
 	baseUrl;
 	API_BASE_PATH = "/api/blocks";
@@ -812,20 +821,27 @@ var N = Ke(), qe = {
 			return e.json();
 		}).then((e) => e.results);
 	}
+	logAndPromiseError(e, t = null) {
+		return console.warn(e, t), Promise.resolve({
+			html: null,
+			valid: !1,
+			error: t ?? Error(e)
+		});
+	}
 	fetchPreview(e) {
 		if (this.cache.has(e)) return this.cache.get(e);
 		let t;
 		try {
 			t = this.buildUrl(e);
-		} catch (e) {
-			return Promise.reject(e);
+		} catch (t) {
+			let n = this.logAndPromiseError("Unable to build API URL", t instanceof Error ? t : Error(String(t)));
+			return this.cache.set(e, n), n;
 		}
-		let n = fetch(t).then((t) => {
-			if (!t.ok) throw this.cache.delete(e), Error(`Failed to fetch block ${e}: ${t.status}`);
-			return t.text();
-		}).then((e) => ({ html: e })).catch((t) => {
-			throw this.cache.delete(e), t;
-		});
+		let n = fetch(t).then(async (t) => t.ok ? {
+			html: await t.text(),
+			valid: !0,
+			error: null
+		} : this.logAndPromiseError(`Failed to fetch block ${e} (${t.status})`)).catch((t) => this.logAndPromiseError(`Error fetching block ${e}: ${t instanceof Error ? t.message : String(t)}`, t));
 		return this.cache.set(e, n), n;
 	}
 	get(e) {
@@ -850,6 +866,7 @@ var N = Ke(), qe = {
 	currentMarkUnderCursor = null;
 	blockListElement = null;
 	blockListRequest;
+	updateHighlightId = 0;
 	constructor(e, t) {
 		this.embedPreviewDelayMs = t.embedPreviewDelayMs ?? 200, this.textarea = this.initializeModule(e), this.wrapper = this.createWrapper(), this.highlight = this.createHighlight(), this.preview = Je(), this.wrapper.appendChild(this.preview);
 		let n = t.baseUrl;
@@ -963,10 +980,19 @@ var N = Ke(), qe = {
 		}
 	}
 	updateHighlight() {
-		let e = this.textarea.value;
-		e[e.length - 1] === "\n" && (e += " "), e = e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), e = e.replace(t, "<mark class=\"content-block-highlight__mark\">$&</mark>"), this.highlight.innerHTML = e;
-		let n = e.matchAll(t);
-		for (let e of n) this.apiClient.fetchPreview(e[0]).catch((e) => console.error(e));
+		let e = ++this.updateHighlightId, n = this.textarea.value;
+		n[n.length - 1] === "\n" && (n += " "), n = n.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"), this.highlight.innerHTML = n.replace(t, "<mark class=\"content-block-highlight__mark\">$&</mark>");
+		let r = Array.from(n.matchAll(t)), i = r.map(([e]) => this.apiClient.fetchPreview(e));
+		Promise.all(i).then((t) => {
+			if (e !== this.updateHighlightId) return;
+			let i = "", a = 0;
+			r.forEach((e, r) => {
+				let o = t[r], s = e.index, c = s + e[0].length;
+				i += n.slice(a, s);
+				let l = "content-block-highlight__mark";
+				o && !o.valid && (l += " content-block-highlight__mark--invalid"), i += `<mark class="${l}">${e[0]}</mark>`, a = c;
+			}), i += n.slice(a), this.highlight.innerHTML = i;
+		});
 	}
 	async onTextareaMouseMove(e) {
 		let t = this.getMarkUnderCursor(e);
@@ -999,8 +1025,8 @@ var N = Ke(), qe = {
 	async renderHoverPreview(e, t, n) {
 		try {
 			let r = await n;
-			if (this.activeHoverEmbedCode !== t) return;
-			this.preview.innerHTML = Ye(r.html), this.positionHoverPreview(e), this.showElement(this.preview);
+			if (this.activeHoverEmbedCode !== t || !r.html) return;
+			this.preview.innerHTML = Ye(r.html, t), this.positionHoverPreview(e), this.showElement(this.preview);
 		} catch (e) {
 			console.error(e), this.hideHoverPreview();
 		}
