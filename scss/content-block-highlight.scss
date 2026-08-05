@@ -29,6 +29,11 @@ textarea.content-block-highlight__input {
   resize: none;
 }
 
+.content-block-highlight__mark--invalid {
+  background-color: $govuk-error-colour;
+  color: white;
+}
+
 .content-block-highlight__preview {
   position: absolute;
   z-index: 2;

@@ -4,7 +4,9 @@ import config from "../config.ts";
 export const sanitizeHtml = (html: string, embedcode: string): string => {
   const deniedTags = new Set<string>();
 
-  const hook = (_node, data) => {
+  // DOMPurify hook types are complex and vary by hook name, using any for flexibility
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hook = (_node: any, data: any) => {
     const tagName =
       typeof data.tagName === "string"
         ? data.tagName.toLowerCase()
