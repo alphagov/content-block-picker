@@ -1,6 +1,10 @@
 import { expect, test, describe, beforeEach, vi } from "vitest";
 import { ContentBlockPicker } from "./content-block-picker.ts";
-import { BlockType, type ContentBlock } from "./content-block/api-client.ts";
+import {
+  BlockType,
+  ContentBlock,
+  EmbedCodePreview,
+} from "./content-block/api-client.ts";
 
 describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;
@@ -64,6 +68,13 @@ describe("ContentBlockPicker", () => {
       baseUrl,
     });
 
+    // Mock fetchPreview to return valid responses by default
+    vi.spyOn(pickerInstance.apiClient, "fetchPreview").mockResolvedValue({
+      html: "<p>Rendered</p>",
+      valid: true,
+      error: null,
+    });
+
     return { textareaWithButton, insertButton, pickerInstance };
   }
 
@@ -75,6 +86,13 @@ describe("ContentBlockPicker", () => {
     `;
     textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
     picker = new ContentBlockPicker(textarea, { baseUrl, embedPreviewDelayMs });
+
+    // Mock fetchPreview to return valid responses by default
+    vi.spyOn(picker.apiClient, "fetchPreview").mockResolvedValue({
+      html: "<p>Rendered</p>",
+      valid: true,
+      error: null,
+    });
   });
 
   describe("initializeModule", () => {
@@ -127,37 +145,127 @@ describe("ContentBlockPicker", () => {
   });
 
   describe("updateHighlight", () => {
-    test("it escapes HTML and wraps embed codes", () => {
+    test("it escapes HTML and wraps embed codes", async () => {
+      vi.spyOn(picker.apiClient, "fetchPreview").mockResolvedValue({
+        html: "<p>Rendered</p>",
+        valid: true,
+        error: null,
+      });
+
       picker.textarea = textarea;
       picker.highlight = document.createElement("div");
 
       textarea.value = "<b>{{embed:contact:123}}</b>";
       picker.updateHighlight();
 
-      expect(picker.highlight.innerHTML).toBe(
-        '&lt;b&gt;<mark class="content-block-highlight__mark">{{embed:contact:123}}</mark>&lt;/b&gt;',
-      );
+      await vi.waitFor(() => {
+        expect(picker.highlight.innerHTML).toBe(
+          '&lt;b&gt;<mark class="content-block-highlight__mark">{{embed:contact:123}}</mark>&lt;/b&gt;',
+        );
+      });
     });
 
-    test("it adds a trailing space if the text ends with a newline", () => {
+    test("it adds a trailing space if the text ends with a newline", async () => {
       picker.textarea = textarea;
       picker.highlight = document.createElement("div");
 
       textarea.value = "text\n";
       picker.updateHighlight();
 
-      expect(picker.highlight.innerHTML).toBe("text\n ");
+      await vi.waitFor(() => {
+        expect(picker.highlight.innerHTML).toBe("text\n ");
+      });
+    });
+
+    test("it marks invalid embed codes with the invalid CSS class", async () => {
+      vi.spyOn(picker.apiClient, "fetchPreview").mockResolvedValue({
+        html: null,
+        valid: false,
+        error: new Error("Some error"),
+      });
+
+      picker.textarea = textarea;
+      picker.highlight = document.createElement("div");
+
+      textarea.value = "{{embed:contact:invalid}}";
+      picker.updateHighlight();
+
+      await vi.waitFor(() => {
+        expect(picker.highlight.innerHTML).toBe(
+          '<mark class="content-block-highlight__mark content-block-highlight__mark--invalid">{{embed:contact:invalid}}</mark>',
+        );
+      });
+    });
+
+    test("it prevents stale results from overwriting newer ones (race condition)", async () => {
+      let firstCallResolve: (value: EmbedCodePreview) => void;
+      let secondCallResolve: (value: EmbedCodePreview) => void;
+
+      const firstPromise = new Promise<EmbedCodePreview>((resolve) => {
+        firstCallResolve = resolve;
+      });
+      const secondPromise = new Promise<EmbedCodePreview>((resolve) => {
+        secondCallResolve = resolve;
+      });
+
+      let callCount = 0;
+      vi.spyOn(picker.apiClient, "fetchPreview").mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return firstPromise;
+        } else {
+          return secondPromise;
+        }
+      });
+
+      picker.textarea = textarea;
+      picker.highlight = document.createElement("div");
+
+      // First call - will resolve slower
+      textarea.value = "{{embed:contact:first}}";
+      picker.updateHighlight();
+
+      // Second call - will resolve faster
+      textarea.value = "{{embed:contact:second}}";
+      picker.updateHighlight();
+
+      // Resolve second call first (fast response)
+      secondCallResolve!({ html: "<p>Second</p>", valid: true, error: null });
+
+      await vi.waitFor(() => {
+        expect(picker.highlight.innerHTML).toContain("second");
+      });
+
+      // Now resolve the first call (slow response)
+      firstCallResolve!({ html: "<p>First</p>", valid: true, error: null });
+
+      // Wait a bit to ensure first call's .then() executes
+      await vi.advanceTimersByTimeAsync(50);
+
+      // Highlight should still show "second", not "first"
+      expect(picker.highlight.innerHTML).toContain("second");
+      expect(picker.highlight.innerHTML).not.toContain("first");
     });
   });
 
   describe("hover preview", () => {
     test("it renders cached HTML on mark mouseover", async () => {
       const fetchMock = mockSuccessFetch();
+      // Clear the mock from beforeEach so we use the global fetch mock
+      vi.mocked(picker.apiClient.fetchPreview).mockRestore();
 
       textarea.value = "{{embed:contact:123}}";
       textarea.dispatchEvent(new Event("input"));
 
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      // Wait for the mark to be rendered with the correct class
+      await vi.waitFor(() => {
+        const mark = picker.highlight.querySelector(
+          ".content-block-highlight__mark",
+        );
+        expect(mark).not.toBeNull();
+      });
 
       const mark = picker.highlight.querySelector(
         ".content-block-highlight__mark",
@@ -175,11 +283,21 @@ describe("ContentBlockPicker", () => {
 
     test("it hides the preview on mark mouseout", async () => {
       const fetchMock = mockSuccessFetch();
+      // Clear the mock from beforeEach so we use the global fetch mock
+      vi.mocked(picker.apiClient.fetchPreview).mockRestore();
 
       textarea.value = "{{embed:contact:123}}";
       textarea.dispatchEvent(new Event("input"));
 
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      // Wait for the mark to be rendered with the correct class
+      await vi.waitFor(() => {
+        const mark = picker.highlight.querySelector(
+          ".content-block-highlight__mark",
+        );
+        expect(mark).not.toBeNull();
+      });
 
       const mark = picker.highlight.querySelector(
         ".content-block-highlight__mark",
@@ -198,11 +316,21 @@ describe("ContentBlockPicker", () => {
 
     test("it hides the preview when the cursor moves off the mark", async () => {
       const fetchMock = mockSuccessFetch();
+      // Clear the mock from beforeEach so we use the global fetch mock
+      vi.mocked(picker.apiClient.fetchPreview).mockRestore();
 
       textarea.value = "{{embed:contact:123}}";
       textarea.dispatchEvent(new Event("input"));
 
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      // Wait for the mark to be rendered with the correct class
+      await vi.waitFor(() => {
+        const mark = picker.highlight.querySelector(
+          ".content-block-highlight__mark",
+        );
+        expect(mark).not.toBeNull();
+      });
 
       const mark = picker.highlight.querySelector(
         ".content-block-highlight__mark",
@@ -264,15 +392,23 @@ describe("ContentBlockPicker", () => {
       expect(pickerInstance.embedPreviewDelayMs).toBe(embedPreviewDelayMs);
     });
 
-    test("it updates the highlight on input", () => {
-      new ContentBlockPicker(textarea, { baseUrl });
+    test("it updates the highlight on input", async () => {
+      const pickerInstance = new ContentBlockPicker(textarea, { baseUrl });
+      vi.spyOn(pickerInstance.apiClient, "fetchPreview").mockResolvedValue({
+        html: "<p>Rendered</p>",
+        valid: true,
+        error: null,
+      });
+
       textarea.value = "{{embed:contact:123}}";
       textarea.dispatchEvent(new Event("input"));
 
-      const highlight = document.querySelector(
-        ".content-block-highlight__highlight",
-      );
-      expect(highlight?.innerHTML).toContain("<mark");
+      await vi.waitFor(() => {
+        const highlight = document.querySelector(
+          ".content-block-highlight__highlight",
+        );
+        expect(highlight?.innerHTML).toContain("<mark");
+      });
     });
 
     test("it syncs scroll positions", () => {
@@ -800,6 +936,19 @@ describe("ContentBlockPicker", () => {
       const [firstPicker, secondPicker] = ContentBlockPicker.initAll({
         baseUrl,
       });
+
+      // Mock fetchPreview for both pickers
+      vi.spyOn(firstPicker.apiClient, "fetchPreview").mockResolvedValue({
+        html: "<p>Rendered</p>",
+        valid: true,
+        error: null,
+      });
+      vi.spyOn(secondPicker.apiClient, "fetchPreview").mockResolvedValue({
+        html: "<p>Rendered</p>",
+        valid: true,
+        error: null,
+      });
+
       vi.spyOn(firstPicker.apiClient, "fetchAllBlocks").mockResolvedValue(
         sampleBlocks,
       );
