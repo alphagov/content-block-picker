@@ -1,52 +1,9 @@
-/**
- * Represents an embed code response from the API.
- */
-export type EmbedCodePreview =
-  | { html: string; valid: true; error: null }
-  | { html: null; valid: false; error: Error };
-
-export enum BlockType {
-  Pension = "Pension",
-  Contact = "Contact",
-  TimePeriod = "Time Period",
-}
-
-/**
- * The organisation that owns a content block.
- */
-export interface ContentBlockOrganisation {
-  name: string;
-  content_id: string;
-}
-
-/**
- * A single content block as returned by the blocks list endpoint.
- */
-export interface ContentBlock {
-  title: string;
-  block_type: BlockType;
-  organisation: ContentBlockOrganisation;
-  state: string;
-  embed_code: string;
-  formats: string[];
-}
-
-/**
- * The response shape of the blocks list endpoint.
- */
-export interface BlocksResponse {
-  results: ContentBlock[];
-}
-
-/**
- * APIClient is a simple client for fetching rendered content blocks from the server.
- *
- * It includes an in-memory cache to avoid redundant network requests for the same
- * embed code. The cache is keyed by the embed code string, and the values are Promises that
- * resolve to the fetched data. This allows multiple concurrent requests for the same
- * embed code to share the same Promise, preventing duplicate fetches.
- */
-
+import {
+  BlockType,
+  ContentBlock,
+  BlocksResponse,
+  EmbedCodePreview,
+} from "../@types";
 import { isValidEmbedCode } from "./regex.ts";
 
 const supportedBlockTypes = new Set<string>(Object.values(BlockType));
@@ -114,6 +71,36 @@ export class APIClient {
       valid: false,
       error: error ?? new Error(message),
     });
+  }
+
+  fetchBlock(embedCode: string): Promise<ContentBlock> {
+    const baseEmbedCode = embedCode.split("#")[0];
+    const url = new URL(
+      `${this.BLOCKS_PATH}/?keyword=${encodeURIComponent(baseEmbedCode)}`,
+      this.baseUrl,
+    ).toString();
+
+    return fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch block ${embedCode}: ${response.status}`,
+          );
+        }
+
+        return response.json() as Promise<BlocksResponse>;
+      })
+      .then((data) => {
+        const block = data.results.find(
+          (b) => b.embed_code === baseEmbedCode && isSupportedContentBlock(b),
+        );
+        if (!block) {
+          throw new Error(
+            `Unsupported block type for embed code ${embedCode}.`,
+          );
+        }
+        return block;
+      });
   }
 
   fetchPreview(embedCode: string): Promise<EmbedCodePreview> {

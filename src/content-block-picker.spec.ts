@@ -1,10 +1,6 @@
 import { expect, test, describe, beforeEach, vi } from "vitest";
 import { ContentBlockPicker } from "./content-block-picker.ts";
-import {
-  BlockType,
-  ContentBlock,
-  EmbedCodePreview,
-} from "./content-block/api-client.ts";
+import { BlockType, ContentBlock, EmbedCodePreview } from "./@types";
 
 describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;
@@ -42,6 +38,18 @@ describe("ContentBlockPicker", () => {
       ok: true,
       status: 200,
       text: vi.fn().mockResolvedValue("<p>Rendered</p>"),
+      json: vi.fn().mockResolvedValue({
+        results: [
+          {
+            title: "Test",
+            block_type: "Contact",
+            organisation: { name: "Org", content_id: "1" },
+            state: "published",
+            embed_code: "{{embed:contact:123}}",
+            formats: [],
+          },
+        ],
+      }),
     } as unknown as Response);
 
     vi.stubGlobal("fetch", fetchMock);
@@ -470,16 +478,16 @@ describe("ContentBlockPicker", () => {
         topLevelList.children,
       ) as HTMLLIElement[];
 
-      expect(topLevelItems[0].childNodes[0]?.textContent).toBe(
-        "Sample Pension Block 1",
-      );
+      expect(
+        topLevelItems[0].querySelector("button")?.textContent?.trim(),
+      ).toBe("Sample Pension Block 1");
       expect(topLevelItems[0].dataset.embedCode).toBe(
         "{{embed:content_block_pension:sample-pension-1}}",
       );
       expect(topLevelItems[0].querySelector("ul")).toBeNull();
-      expect(topLevelItems[1].childNodes[0]?.textContent).toBe(
-        "Sample Time Period Block 1",
-      );
+      expect(
+        topLevelItems[1].querySelector("button")?.textContent?.trim(),
+      ).toBe("Sample Time Period Block 1");
       expect(topLevelItems[1].dataset.embedCode).toBe(
         "{{embed:content_block_time_period:sample-time-1}}",
       );
@@ -487,10 +495,11 @@ describe("ContentBlockPicker", () => {
         topLevelItems[1].querySelectorAll("ul > li"),
       ) as HTMLLIElement[];
 
-      expect(formatItems.map((item) => item.textContent)).toEqual([
-        "long_form",
-        "years",
-      ]);
+      expect(
+        formatItems.map((item) =>
+          item.querySelector("button")?.textContent?.trim(),
+        ),
+      ).toEqual(["long_form", "years"]);
       expect(formatItems[0].dataset.embedCode).toBe(
         "{{embed:content_block_time_period:sample-time-1#long_form}}",
       );
