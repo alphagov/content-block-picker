@@ -8,7 +8,7 @@ export type EmbedCodePreview =
 export enum BlockType {
   Pension = "Pension",
   Contact = "Contact",
-  TimePeriod = "Time Period",
+  TimePeriod = "Time period",
 }
 
 /**
