@@ -243,20 +243,6 @@ export class ContentBlockPicker {
     };
   }
 
-  private createBlockListButton(
-    label: string,
-    embedCode: string,
-  ): HTMLButtonElement {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = label;
-    button.addEventListener("click", () => {
-      this.insertEmbedCode(embedCode);
-      this.textarea.focus();
-    });
-    return button;
-  }
-
   private renderBlockList(blocks: ContentBlock[]) {
     if (!this.blockListElement) return;
 
@@ -267,33 +253,19 @@ export class ContentBlockPicker {
       },
     );
 
-    for (const block of blocks) {
-      const blockItem = document.createElement("li");
-      blockItem.dataset.embedCode = block.embed_code;
-      blockItem.appendChild(
-        this.createBlockListButton(block.title, block.embed_code),
-      );
-
-      if (block.formats.length > 0) {
-        const formatsList = document.createElement("ul");
-
-        for (const format of block.formats) {
-          const formatEmbedCode = `${block.embed_code.slice(0, -2)}#${format}}}`;
-          const formatItem = document.createElement("li");
-          formatItem.dataset.embedCode = formatEmbedCode;
-          formatItem.appendChild(
-            this.createBlockListButton(format, formatEmbedCode),
-          );
-          formatsList.appendChild(formatItem);
-        }
-
-        blockItem.appendChild(formatsList);
+    const buttons = this.blockListElement.querySelectorAll<HTMLButtonElement>(
+      "button.cbp-insert-button",
+    );
+    buttons.forEach((button) => {
+      const embedCode = button.dataset.embedCode;
+      if (embedCode) {
+        button.addEventListener("click", (e) => {
+          e.preventDefault();
+          this.insertEmbedCode(embedCode);
+          this.textarea.focus();
+        });
       }
-
-      blockList.appendChild(blockItem);
-    }
-
-    this.blockListElement.replaceChildren(blockList);
+    });
   }
 
   private async fetchAndRenderBlockList() {
