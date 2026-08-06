@@ -140,37 +140,55 @@ test.describe("List available blocks", () => {
     await expect(blockList).toHaveAttribute("aria-hidden", "false");
 
     // Wait for the blocks to load and be displayed
-    const topLevelList = blockList.locator("ul").first();
+    const topLevelList = blockList.locator(":scope > ul.govuk-list");
     await expect(topLevelList).toBeVisible();
-    await expect(topLevelList.locator("> li")).toHaveCount(2);
+    await expect(topLevelList.locator(":scope > li")).toHaveCount(2);
 
     // Check first block (no formats)
-    const firstBlock = topLevelList.locator("> li").first();
-    await expect(firstBlock).toContainText("Pension Block A");
+    const firstBlock = topLevelList.locator(":scope > li").first();
+    await expect(firstBlock.locator(":scope > button")).toHaveText(
+      "Pension Block A",
+    );
     await expect(firstBlock).toHaveAttribute(
       "data-embed-code",
       "{{embed:content_block_pension:abc123}}",
     );
 
     // Check second block (with formats)
-    const secondBlock = topLevelList.locator("> li").nth(1);
-    await expect(secondBlock).toContainText("Time Period Block B");
+    const secondBlock = topLevelList.locator(":scope > li").nth(1);
+    await expect(secondBlock.locator(":scope > button")).toHaveText(
+      "Time Period Block B",
+    );
     await expect(secondBlock).toHaveAttribute(
       "data-embed-code",
       "{{embed:content_block_time_period:def456}}",
     );
 
     // Check that formats are displayed as nested list for second block
-    const secondBlockFormatsList = secondBlock.locator("ul");
+    const secondBlockFormatsList = secondBlock.locator(":scope > ul");
     await expect(secondBlockFormatsList).toBeVisible();
-    await expect(secondBlockFormatsList.locator("li")).toHaveCount(2);
-    await expect(secondBlockFormatsList).toContainText("long_form");
-    await expect(secondBlockFormatsList).toContainText("years");
-    await expect(secondBlockFormatsList.locator("li").first()).toHaveAttribute(
+    await expect(secondBlockFormatsList.locator(":scope > li")).toHaveCount(2);
+    await expect(
+      secondBlockFormatsList
+        .locator(":scope > li")
+        .first()
+        .locator(":scope > button"),
+    ).toHaveText("long_form");
+    await expect(
+      secondBlockFormatsList
+        .locator(":scope > li")
+        .nth(1)
+        .locator(":scope > button"),
+    ).toHaveText("years");
+    await expect(
+      secondBlockFormatsList.locator(":scope > li").first(),
+    ).toHaveAttribute(
       "data-embed-code",
       "{{embed:content_block_time_period:def456#long_form}}",
     );
-    await expect(secondBlockFormatsList.locator("li").nth(1)).toHaveAttribute(
+    await expect(
+      secondBlockFormatsList.locator(":scope > li").nth(1),
+    ).toHaveAttribute(
       "data-embed-code",
       "{{embed:content_block_time_period:def456#years}}",
     );
