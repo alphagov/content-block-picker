@@ -26,6 +26,9 @@ jobs:
   prettier:
     uses: ./.github/workflows/prettier.yml
 
+  build:
+    uses: ./.github/workflows/build.yml
+
   run-playwright-tests:
     name: Playwright
     needs:
