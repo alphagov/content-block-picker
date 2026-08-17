@@ -86,3 +86,19 @@ You can see a [demo of the work so far here](https://alphagov.github.io/content-
 ## Future work
 
 In future, we'd like to provide previews of the content blocks when the user hovers over an embed code.
+
+## Release Process
+
+This package is published to npm at https://www.npmjs.com/package/content-block-picker. In order to trigger a new release we simply need to:
+
+1. Bump the version number in the package.json file.
+
+   This can be done with the `npm version` command, e.g. `npm version minor` or `npm version 2.1.3`.
+
+2. Commit and merge this change to main.
+
+   Observing the usual PR process.
+
+3. Run the 'Publish to NPM' action in GitHub Actions.
+
+   Navigate to https://github.com/alphagov/content-block-picker/actions/workflows/publish-to-npm.yml and run a new workflow.
