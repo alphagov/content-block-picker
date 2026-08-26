@@ -292,5 +292,49 @@ describe("APIClient", () => {
 
       expect(result).toEqual(payload.results);
     });
+
+    describe("blockCache", () => {
+      let client = new APIClient(baseUrl);
+      const [block1, block2] = payload.results;
+
+      beforeEach(() => {
+        client = new APIClient(baseUrl);
+        fetchMock.mockResolvedValue(createJsonResponse(payload));
+      });
+
+      describe("when calling the blocks endpoint", () => {
+        test("it should call through to the real endpoint", async () => {
+          await client.fetchAllBlocks();
+          expect(fetchMock).toHaveBeenCalledOnce();
+        });
+
+        test("it should cache the result", async () => {
+          expect(client.getBlock(block1.embed_code)).not.toBeDefined();
+          expect(client.getBlock(block2.embed_code)).not.toBeDefined();
+
+          await client.fetchAllBlocks();
+
+          expect(client.getBlock(block1.embed_code)).toBe(block1);
+          expect(client.getBlock(block2.embed_code)).toBe(block2);
+        });
+      });
+
+      describe("when getting information about a single block", () => {
+        beforeEach(async () => {
+          await client.fetchAllBlocks();
+        });
+
+        test("it should not call through to the real endpoint", () => {
+          expect(fetchMock).toHaveBeenCalledOnce();
+          client.getBlock(block1.embed_code);
+          expect(fetchMock).toHaveBeenCalledOnce();
+        });
+
+        test("it should return the cached result", () => {
+          const myBlock = client.getBlock(block1.embed_code);
+          expect(myBlock).toEqual(block1);
+        });
+      });
+    });
   });
 });

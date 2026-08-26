@@ -1,5 +1,5 @@
 import "../scss/base.scss";
-import embedRegex from "./content-block/regex.ts";
+import embedRegex, { formatSpecifierRegex } from "./content-block/regex.ts";
 import {
   createHoverPreviewElement,
   makePreviewContent,
@@ -410,7 +410,12 @@ export class ContentBlockPicker {
     try {
       if (this.activeHoverEmbedCode !== embedCode || !preview.html) return;
 
-      this.preview.innerHTML = makePreviewContent(preview.html, embedCode);
+      const block = this.apiClient.getBlock(
+        embedCode.replace(formatSpecifierRegex, ""),
+      );
+      if (!block) return;
+
+      this.preview.innerHTML = makePreviewContent(preview.html, block);
       this.positionHoverPreview(mark);
       this.showElement(this.preview);
     } catch (error) {

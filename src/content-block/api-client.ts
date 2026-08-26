@@ -37,6 +37,7 @@ function isSupportedContentBlock(block: ContentBlock): boolean {
  */
 export class APIClient {
   private previewCache = new Map<string, EmbedCodePreview>();
+  private blockCache = new Map<string, ContentBlock>();
   private readonly baseUrl: URL;
   private readonly API_BASE_PATH = "/api/blocks";
   private readonly BLOCKS_PATH = this.API_BASE_PATH;
@@ -63,7 +64,12 @@ export class APIClient {
     }
 
     const data = (await response.json()) as BlocksResponse;
-    return data.results.filter(isSupportedContentBlock);
+
+    const supportedBlocks = data.results.filter(isSupportedContentBlock);
+    supportedBlocks.forEach((block) => {
+      this.blockCache.set(block.embed_code, block);
+    });
+    return supportedBlocks;
   }
 
   private logAndReturnError(
@@ -131,6 +137,9 @@ export class APIClient {
   getPreview(embedCode: string): EmbedCodePreview | undefined {
     return this.previewCache.get(embedCode);
   }
+
+  getBlock(embedCode: string): ContentBlock | undefined {
+    return this.blockCache.get(embedCode);
   }
 
   private buildUrl(embedCode: string): string {
