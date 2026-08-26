@@ -96,7 +96,7 @@ describe("APIClient", () => {
     expect(secondResult).toEqual(firstResult);
   });
 
-  test("it returns a cached promise only when present", async () => {
+  test("it returns a cached result only when present", async () => {
     const embedCode = "{{embed:contact:abc-123}}";
     const payload: BlockResponse = { html: "<p>Cached lookup</p>" };
     const client = new APIClient("http://not-used.test");
@@ -105,9 +105,10 @@ describe("APIClient", () => {
 
     expect(client.get(embedCode)).toBeUndefined();
 
-    const pending = client.fetchPreview(embedCode);
-    expect(client.get(embedCode)).toBe(pending);
-    await expect(pending).resolves.toEqual({
+    const result = await client.fetchPreview(embedCode);
+
+    expect(client.get(embedCode)).toBe(result);
+    expect(result).toEqual({
       ...payload,
       valid: true,
       error: null,
@@ -162,14 +163,13 @@ describe("APIClient", () => {
 
     await client.fetchPreview(embedCode);
 
-    const cachedPromise = client.get(embedCode);
-    expect(cachedPromise).toBeDefined();
+    const cachedResult = client.get(embedCode);
 
-    const result = await cachedPromise!;
-    expect(result.valid).toBe(false);
-    expect(result.error).toBeInstanceOf(Error);
-    expect(result.error!.message).toContain("Failed to fetch block");
-    expect(result.html).toBeNull();
+    expect(cachedResult).toBeDefined();
+    expect(cachedResult!.valid).toBe(false);
+    expect(cachedResult!.error).toBeInstanceOf(Error);
+    expect(cachedResult!.error!.message).toContain("Failed to fetch block");
+    expect(cachedResult!.html).toBeNull();
   });
 
   describe("fetchAllBlocks", () => {
