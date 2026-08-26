@@ -5,7 +5,10 @@ import {
   makePreviewContent,
 } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
-import type { ContentBlock } from "./content-block/api-client.ts";
+import type {
+  ContentBlock,
+  EmbedCodePreview,
+} from "./content-block/api-client.ts";
 
 export interface ContentBlockPickerOptions {
   baseUrl: string;
@@ -294,9 +297,9 @@ export class ContentBlockPicker {
       return;
     }
 
-    this.blockListRequest = this.apiClient.fetchAllBlocks();
-
     try {
+      this.blockListRequest = this.apiClient.fetchAllBlocks();
+
       const blocks = await this.blockListRequest;
       this.renderBlockList(blocks);
     } catch (error) {
@@ -309,7 +312,7 @@ export class ContentBlockPicker {
     }
   }
 
-  updateHighlight() {
+  async updateHighlight() {
     const currentUpdateId = ++this.updateHighlightId;
     let text = this.textarea.value;
 
@@ -329,42 +332,47 @@ export class ContentBlockPicker {
     );
 
     const allEmbedCodes = Array.from(text.matchAll(embedRegex));
-    const previewPromises = allEmbedCodes.map(([embedCode]) =>
-      this.apiClient.fetchPreview(embedCode),
+
+    if (allEmbedCodes.length === 0) {
+      return;
+    }
+
+    const previews = await Promise.all(
+      allEmbedCodes.map(([embedCode]) =>
+        this.apiClient.fetchPreview(embedCode),
+      ),
     );
 
-    Promise.all(previewPromises).then((previews) => {
-      // Only apply results if this is still the latest updateHighlight call
-      if (currentUpdateId !== this.updateHighlightId) {
-        return;
+    // Only apply results if this is still the latest updateHighlight call
+    if (currentUpdateId !== this.updateHighlightId) {
+      return;
+    }
+
+    let result = "";
+    let lastIndex = 0;
+
+    allEmbedCodes.forEach((embedCodeRegex, index) => {
+      const preview = previews[index];
+      const matchStart = embedCodeRegex.index!;
+      const matchEnd = matchStart + embedCodeRegex[0].length;
+
+      // Append text before this match
+      result += text.slice(lastIndex, matchStart);
+
+      // Append the marked-up embed code
+      let css = "content-block-highlight__mark";
+      if (!preview.valid) {
+        css += " content-block-highlight__mark--invalid";
       }
+      result += `<mark class="${css}">${embedCodeRegex[0]}</mark>`;
 
-      let result = "";
-      let lastIndex = 0;
-
-      allEmbedCodes.forEach((embedCodeRegex, index) => {
-        const preview = previews[index];
-        const matchStart = embedCodeRegex.index!;
-        const matchEnd = matchStart + embedCodeRegex[0].length;
-
-        // Append text before this match
-        result += text.slice(lastIndex, matchStart);
-
-        // Append the marked-up embed code
-        let css = "content-block-highlight__mark";
-        if (preview && !preview.valid) {
-          css += " content-block-highlight__mark--invalid";
-        }
-        result += `<mark class="${css}">${embedCodeRegex[0]}</mark>`;
-
-        lastIndex = matchEnd;
-      });
-
-      // Append any remaining text after the last match
-      result += text.slice(lastIndex);
-
-      this.highlight.innerHTML = result;
+      lastIndex = matchEnd;
     });
+
+    // Append any remaining text after the last match
+    result += text.slice(lastIndex);
+
+    this.highlight.innerHTML = result;
   }
 
   async onTextareaMouseMove(event: MouseEvent) {
@@ -378,7 +386,7 @@ export class ContentBlockPicker {
       this.onMarkLeave();
     }
     if (mark) {
-      await this.onMarkEnter(mark);
+      this.onMarkEnter(mark);
     }
   }
 
@@ -397,18 +405,18 @@ export class ContentBlockPicker {
     return mark instanceof HTMLElement ? mark : null;
   }
 
-  async onMarkEnter(mark: HTMLElement) {
+  onMarkEnter(mark: HTMLElement) {
     const embedCode = mark.textContent?.trim();
     if (!embedCode) return;
 
-    const cachedPreviewPromise = this.apiClient.get(embedCode);
-    if (!cachedPreviewPromise) return;
+    const cachedPreview = this.apiClient.get(embedCode);
+    if (!cachedPreview) return;
 
     this.activeHoverEmbedCode = embedCode;
     this.clearHoverTimer();
 
     this.hoverPreviewTimeoutId = window.setTimeout(() => {
-      void this.renderHoverPreview(mark, embedCode, cachedPreviewPromise);
+      this.renderHoverPreview(mark, embedCode, cachedPreview);
     }, this.embedPreviewDelayMs);
   }
 
@@ -421,10 +429,9 @@ export class ContentBlockPicker {
   private async renderHoverPreview(
     mark: HTMLElement,
     embedCode: string,
-    cachedPreviewPromise: NonNullable<ReturnType<APIClient["get"]>>,
+    preview: EmbedCodePreview,
   ) {
     try {
-      const preview = await cachedPreviewPromise;
       if (this.activeHoverEmbedCode !== embedCode || !preview.html) return;
 
       this.preview.innerHTML = makePreviewContent(preview.html, embedCode);

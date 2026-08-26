@@ -156,13 +156,11 @@ describe("ContentBlockPicker", () => {
       picker.highlight = document.createElement("div");
 
       textarea.value = "<b>{{embed:contact:123}}</b>";
-      picker.updateHighlight();
+      await picker.updateHighlight();
 
-      await vi.waitFor(() => {
-        expect(picker.highlight.innerHTML).toBe(
-          '&lt;b&gt;<mark class="content-block-highlight__mark">{{embed:contact:123}}</mark>&lt;/b&gt;',
-        );
-      });
+      expect(picker.highlight.innerHTML).toBe(
+        '&lt;b&gt;<mark class="content-block-highlight__mark">{{embed:contact:123}}</mark>&lt;/b&gt;',
+      );
     });
 
     test("it adds a trailing space if the text ends with a newline", async () => {
@@ -170,11 +168,9 @@ describe("ContentBlockPicker", () => {
       picker.highlight = document.createElement("div");
 
       textarea.value = "text\n";
-      picker.updateHighlight();
+      await picker.updateHighlight();
 
-      await vi.waitFor(() => {
-        expect(picker.highlight.innerHTML).toBe("text\n ");
-      });
+      expect(picker.highlight.innerHTML).toBe("text\n ");
     });
 
     test("it marks invalid embed codes with the invalid CSS class", async () => {
@@ -188,13 +184,11 @@ describe("ContentBlockPicker", () => {
       picker.highlight = document.createElement("div");
 
       textarea.value = "{{embed:contact:invalid}}";
-      picker.updateHighlight();
+      await picker.updateHighlight();
 
-      await vi.waitFor(() => {
-        expect(picker.highlight.innerHTML).toBe(
-          '<mark class="content-block-highlight__mark content-block-highlight__mark--invalid">{{embed:contact:invalid}}</mark>',
-        );
-      });
+      expect(picker.highlight.innerHTML).toBe(
+        '<mark class="content-block-highlight__mark content-block-highlight__mark--invalid">{{embed:contact:invalid}}</mark>',
+      );
     });
 
     test("it prevents stale results from overwriting newer ones (race condition)", async () => {
@@ -265,6 +259,7 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
+        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(
@@ -297,6 +292,7 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
+        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(
@@ -330,6 +326,7 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
+        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(
