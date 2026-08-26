@@ -104,11 +104,11 @@ describe("APIClient", () => {
 
     fetchMock.mockResolvedValue(createSuccessResponse(payload));
 
-    expect(client.get(embedCode)).toBeUndefined();
+    expect(client.getPreview(embedCode)).toBeUndefined();
 
     const result = await client.fetchPreview(embedCode);
 
-    expect(client.get(embedCode)).toBe(result);
+    expect(client.getPreview(embedCode)).toBe(result);
     expect(result).toEqual({
       ...payload,
       valid: true,
@@ -156,7 +156,7 @@ describe("APIClient", () => {
     expect(fetchMock).not.toHaveBeenCalled(); // Still no fetch call
   });
 
-  test("it allows retrieval of cached error results via get()", async () => {
+  test("it allows retrieval of cached error results via getPreview()", async () => {
     const embedCode = "{{embed:contact:missing-123}}";
     const client = new APIClient(baseUrl);
 
@@ -164,7 +164,7 @@ describe("APIClient", () => {
 
     await client.fetchPreview(embedCode);
 
-    const cachedResult = client.get(embedCode);
+    const cachedResult = client.getPreview(embedCode);
 
     expect(cachedResult).toBeDefined();
     expect(cachedResult!.valid).toBe(false);

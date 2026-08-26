@@ -255,7 +255,9 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
-        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
+        expect(
+          picker.apiClient.getPreview(sampleBlocks[0].embed_code),
+        ).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(
@@ -288,7 +290,9 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
-        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
+        expect(
+          picker.apiClient.getPreview(sampleBlocks[0].embed_code),
+        ).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(
@@ -322,7 +326,9 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
-        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
+        expect(
+          picker.apiClient.getPreview(sampleBlocks[0].embed_code),
+        ).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(

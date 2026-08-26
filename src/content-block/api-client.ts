@@ -36,7 +36,7 @@ function isSupportedContentBlock(block: ContentBlock): boolean {
  * resolved preview data.
  */
 export class APIClient {
-  private cache = new Map<string, EmbedCodePreview>();
+  private previewCache = new Map<string, EmbedCodePreview>();
   private readonly baseUrl: URL;
   private readonly API_BASE_PATH = "/api/blocks";
   private readonly BLOCKS_PATH = this.API_BASE_PATH;
@@ -79,8 +79,8 @@ export class APIClient {
   }
 
   async fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
-    if (this.cache.has(embedCode)) {
-      return this.cache.get(embedCode)!;
+    if (this.previewCache.has(embedCode)) {
+      return this.previewCache.get(embedCode)!;
     }
 
     let url: string;
@@ -92,13 +92,13 @@ export class APIClient {
         error instanceof Error ? error : new Error(String(error)),
       );
 
-      this.cache.set(embedCode, errorResult);
+      this.previewCache.set(embedCode, errorResult);
       return errorResult;
     }
 
     const result = await this.fetchFromNetwork(embedCode, url);
 
-    this.cache.set(embedCode, result);
+    this.previewCache.set(embedCode, result);
     return result;
   }
 
@@ -128,8 +128,9 @@ export class APIClient {
     }
   }
 
-  get(embedCode: string): EmbedCodePreview | undefined {
-    return this.cache.get(embedCode);
+  getPreview(embedCode: string): EmbedCodePreview | undefined {
+    return this.previewCache.get(embedCode);
+  }
   }
 
   private buildUrl(embedCode: string): string {

@@ -385,7 +385,7 @@ export class ContentBlockPicker {
     const embedCode = mark.textContent?.trim();
     if (!embedCode) return;
 
-    const cachedPreview = this.apiClient.get(embedCode);
+    const cachedPreview = this.apiClient.getPreview(embedCode);
     if (!cachedPreview) return;
 
     this.activeHoverEmbedCode = embedCode;
