@@ -260,7 +260,12 @@ export class ContentBlockPicker {
   private renderBlockList(blocks: ContentBlock[]) {
     if (!this.blockListElement) return;
 
-    const blockList = document.createElement("ul");
+    this.blockListElement.innerHTML = nunjucksEnv.renderString(
+      blockListTemplate,
+      {
+        blocks,
+      },
+    );
 
     for (const block of blocks) {
       const blockItem = document.createElement("li");
