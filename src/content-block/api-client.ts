@@ -38,15 +38,6 @@ export interface BlocksResponse {
   results: ContentBlock[];
 }
 
-/**
- * APIClient is a simple client for fetching rendered content blocks from the server.
- *
- * It includes an in-memory cache to avoid redundant network requests for the same
- * embed code. The cache is keyed by the embed code string, and the values are Promises that
- * resolve to the fetched data. This allows multiple concurrent requests for the same
- * embed code to share the same Promise, preventing duplicate fetches.
- */
-
 import { isValidEmbedCode } from "./regex.ts";
 
 const supportedBlockTypes = new Set<string>(Object.values(BlockType));
@@ -71,8 +62,15 @@ function isSupportedContentBlock(block: ContentBlock): boolean {
   return false;
 }
 
+/**
+ * APIClient is a simple client for fetching rendered content blocks from the server.
+ *
+ * It includes an in-memory cache to avoid redundant network requests for the same
+ * embed code. The cache is keyed by the embed code string, and the values are the
+ * resolved preview data.
+ */
 export class APIClient {
-  private cache = new Map<string, Promise<EmbedCodePreview>>();
+  private cache = new Map<string, EmbedCodePreview>();
   private readonly baseUrl: URL;
   private readonly API_BASE_PATH = "/api/blocks";
   private readonly BLOCKS_PATH = this.API_BASE_PATH;
@@ -90,33 +88,31 @@ export class APIClient {
    *
    * @returns A Promise that resolves to an array of ContentBlock objects.
    */
-  fetchAllBlocks(): Promise<ContentBlock[]> {
+  async fetchAllBlocks(): Promise<ContentBlock[]> {
     const url = new URL(this.BLOCKS_PATH, this.baseUrl).toString();
 
-    return fetch(url)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Failed to fetch blocks: ${response.status}`);
-        }
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch blocks: ${response.status}`);
+    }
 
-        return response.json() as Promise<BlocksResponse>;
-      })
-      .then((data) => data.results.filter(isSupportedContentBlock));
+    const data = (await response.json()) as BlocksResponse;
+    return data.results.filter(isSupportedContentBlock);
   }
 
-  private logAndPromiseError(
+  private logAndReturnError(
     message: string,
     error: Error | null = null,
-  ): Promise<EmbedCodePreview> {
+  ): EmbedCodePreview {
     console.warn(message, error);
-    return Promise.resolve({
+    return {
       html: null,
       valid: false,
       error: error ?? new Error(message),
-    });
+    };
   }
 
-  fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
+  async fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
     if (this.cache.has(embedCode)) {
       return this.cache.get(embedCode)!;
     }
@@ -125,36 +121,48 @@ export class APIClient {
     try {
       url = this.buildUrl(embedCode);
     } catch (error) {
-      const errorPromise = this.logAndPromiseError(
+      const errorResult = this.logAndReturnError(
         "Unable to build API URL",
         error instanceof Error ? error : new Error(String(error)),
       );
-      this.cache.set(embedCode, errorPromise);
-      return errorPromise;
+
+      this.cache.set(embedCode, errorResult);
+      return errorResult;
     }
 
-    const promise = fetch(url)
-      .then(async (response): Promise<EmbedCodePreview> => {
-        if (!response.ok) {
-          return this.logAndPromiseError(
-            `Failed to fetch block ${embedCode} (${response.status})`,
-          );
-        }
-        const html = await response.text();
-        return { html, valid: true, error: null };
-      })
-      .catch((error): Promise<EmbedCodePreview> => {
-        return this.logAndPromiseError(
-          `Error fetching block ${embedCode}: ${error instanceof Error ? error.message : String(error)}`,
-          error,
-        );
-      });
+    const result = await this.fetchFromNetwork(embedCode, url);
 
-    this.cache.set(embedCode, promise);
-    return promise;
+    this.cache.set(embedCode, result);
+    return result;
   }
 
-  get(embedCode: string): Promise<EmbedCodePreview> | undefined {
+  private async fetchFromNetwork(
+    embedCode: string,
+    url: string,
+  ): Promise<EmbedCodePreview> {
+    try {
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        return this.logAndReturnError(
+          `Failed to fetch block ${embedCode} (${response.status})`,
+        );
+      }
+
+      return {
+        html: await response.text(),
+        valid: true,
+        error: null,
+      };
+    } catch (error) {
+      return this.logAndReturnError(
+        `Error fetching block ${embedCode}: ${error instanceof Error ? error.message : String(error)}`,
+        error as Error,
+      );
+    }
+  }
+
+  get(embedCode: string): EmbedCodePreview | undefined {
     return this.cache.get(embedCode);
   }
 
