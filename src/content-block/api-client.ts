@@ -1,43 +1,9 @@
-/**
- * Represents an embed code response from the API.
- */
-export type EmbedCodePreview =
-  | { html: string; valid: true; error: null }
-  | { html: null; valid: false; error: Error };
-
-export enum BlockType {
-  Pension = "Pension",
-  Contact = "Contact",
-  TimePeriod = "Time Period",
-}
-
-/**
- * The organisation that owns a content block.
- */
-export interface ContentBlockOrganisation {
-  name: string;
-  content_id: string;
-}
-
-/**
- * A single content block as returned by the blocks list endpoint.
- */
-export interface ContentBlock {
-  title: string;
-  block_type: BlockType;
-  organisation: ContentBlockOrganisation;
-  state: string;
-  embed_code: string;
-  formats: string[];
-}
-
-/**
- * The response shape of the blocks list endpoint.
- */
-export interface BlocksResponse {
-  results: ContentBlock[];
-}
-
+import {
+  BlockType,
+  ContentBlock,
+  BlocksResponse,
+  EmbedCodePreview,
+} from "../@types";
 import { isValidEmbedCode } from "./regex.ts";
 
 const supportedBlockTypes = new Set<string>(Object.values(BlockType));
@@ -70,7 +36,8 @@ function isSupportedContentBlock(block: ContentBlock): boolean {
  * resolved preview data.
  */
 export class APIClient {
-  private cache = new Map<string, EmbedCodePreview>();
+  private previewCache = new Map<string, EmbedCodePreview>();
+  private blockCache = new Map<string, ContentBlock>();
   private readonly baseUrl: URL;
   private readonly API_BASE_PATH = "/api/blocks";
   private readonly BLOCKS_PATH = this.API_BASE_PATH;
@@ -97,7 +64,12 @@ export class APIClient {
     }
 
     const data = (await response.json()) as BlocksResponse;
-    return data.results.filter(isSupportedContentBlock);
+
+    const supportedBlocks = data.results.filter(isSupportedContentBlock);
+    supportedBlocks.forEach((block) => {
+      this.blockCache.set(block.embed_code, block);
+    });
+    return supportedBlocks;
   }
 
   private logAndReturnError(
@@ -113,8 +85,8 @@ export class APIClient {
   }
 
   async fetchPreview(embedCode: string): Promise<EmbedCodePreview> {
-    if (this.cache.has(embedCode)) {
-      return this.cache.get(embedCode)!;
+    if (this.previewCache.has(embedCode)) {
+      return this.previewCache.get(embedCode)!;
     }
 
     let url: string;
@@ -126,13 +98,13 @@ export class APIClient {
         error instanceof Error ? error : new Error(String(error)),
       );
 
-      this.cache.set(embedCode, errorResult);
+      this.previewCache.set(embedCode, errorResult);
       return errorResult;
     }
 
     const result = await this.fetchFromNetwork(embedCode, url);
 
-    this.cache.set(embedCode, result);
+    this.previewCache.set(embedCode, result);
     return result;
   }
 
@@ -162,8 +134,12 @@ export class APIClient {
     }
   }
 
-  get(embedCode: string): EmbedCodePreview | undefined {
-    return this.cache.get(embedCode);
+  getPreview(embedCode: string): EmbedCodePreview | undefined {
+    return this.previewCache.get(embedCode);
+  }
+
+  getBlock(embedCode: string): ContentBlock | undefined {
+    return this.blockCache.get(embedCode);
   }
 
   private buildUrl(embedCode: string): string {

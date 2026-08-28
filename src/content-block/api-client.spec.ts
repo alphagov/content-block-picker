@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, Mock, test, vi } from "vitest";
-import { APIClient, BlockType, type BlocksResponse } from "./api-client";
+import { APIClient } from "./api-client";
+import { BlocksResponse, BlockType } from "../@types";
 
 interface BlockResponse {
   html: string;
@@ -103,11 +104,11 @@ describe("APIClient", () => {
 
     fetchMock.mockResolvedValue(createSuccessResponse(payload));
 
-    expect(client.get(embedCode)).toBeUndefined();
+    expect(client.getPreview(embedCode)).toBeUndefined();
 
     const result = await client.fetchPreview(embedCode);
 
-    expect(client.get(embedCode)).toBe(result);
+    expect(client.getPreview(embedCode)).toBe(result);
     expect(result).toEqual({
       ...payload,
       valid: true,
@@ -155,7 +156,7 @@ describe("APIClient", () => {
     expect(fetchMock).not.toHaveBeenCalled(); // Still no fetch call
   });
 
-  test("it allows retrieval of cached error results via get()", async () => {
+  test("it allows retrieval of cached error results via getPreview()", async () => {
     const embedCode = "{{embed:contact:missing-123}}";
     const client = new APIClient(baseUrl);
 
@@ -163,7 +164,7 @@ describe("APIClient", () => {
 
     await client.fetchPreview(embedCode);
 
-    const cachedResult = client.get(embedCode);
+    const cachedResult = client.getPreview(embedCode);
 
     expect(cachedResult).toBeDefined();
     expect(cachedResult!.valid).toBe(false);
@@ -290,6 +291,50 @@ describe("APIClient", () => {
       const result = await client.fetchAllBlocks();
 
       expect(result).toEqual(payload.results);
+    });
+
+    describe("blockCache", () => {
+      let client = new APIClient(baseUrl);
+      const [block1, block2] = payload.results;
+
+      beforeEach(() => {
+        client = new APIClient(baseUrl);
+        fetchMock.mockResolvedValue(createJsonResponse(payload));
+      });
+
+      describe("when calling the blocks endpoint", () => {
+        test("it should call through to the real endpoint", async () => {
+          await client.fetchAllBlocks();
+          expect(fetchMock).toHaveBeenCalledOnce();
+        });
+
+        test("it should cache the result", async () => {
+          expect(client.getBlock(block1.embed_code)).not.toBeDefined();
+          expect(client.getBlock(block2.embed_code)).not.toBeDefined();
+
+          await client.fetchAllBlocks();
+
+          expect(client.getBlock(block1.embed_code)).toBe(block1);
+          expect(client.getBlock(block2.embed_code)).toBe(block2);
+        });
+      });
+
+      describe("when getting information about a single block", () => {
+        beforeEach(async () => {
+          await client.fetchAllBlocks();
+        });
+
+        test("it should not call through to the real endpoint", () => {
+          expect(fetchMock).toHaveBeenCalledOnce();
+          client.getBlock(block1.embed_code);
+          expect(fetchMock).toHaveBeenCalledOnce();
+        });
+
+        test("it should return the cached result", () => {
+          const myBlock = client.getBlock(block1.embed_code);
+          expect(myBlock).toEqual(block1);
+        });
+      });
     });
   });
 });

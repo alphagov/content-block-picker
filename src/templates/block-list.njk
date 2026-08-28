@@ -1,0 +1,22 @@
+<ul class="govuk-list">
+  {% for block in blocks %}
+    <li data-embed-code="{{ block.embed_code }}">
+      <button type="button" class="cbp-insert-button" data-embed-code="{{ block.embed_code }}">
+        {{ block.title | escape }}
+      </button>
+
+      {% if block.formats.length > 0 %}
+        <ul class="govuk-list govuk-!-margin-left-4">
+          {% for format in block.formats %}
+            {% set formatEmbedCode = block.embed_code | replace("}}", "#" + format + "}}") %}
+            <li data-embed-code="{{ formatEmbedCode }}">
+              <button type="button" class="cbp-insert-button" data-embed-code="{{ formatEmbedCode }}">
+                {{ format | escape }}
+              </button>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ul>

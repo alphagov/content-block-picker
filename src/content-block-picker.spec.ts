@@ -1,10 +1,6 @@
 import { expect, test, describe, beforeEach, vi } from "vitest";
 import { ContentBlockPicker } from "./content-block-picker.ts";
-import {
-  BlockType,
-  ContentBlock,
-  EmbedCodePreview,
-} from "./content-block/api-client.ts";
+import { BlockType, ContentBlock, EmbedCodePreview } from "./@types";
 
 describe("ContentBlockPicker", () => {
   let textarea: HTMLTextAreaElement;
@@ -42,6 +38,7 @@ describe("ContentBlockPicker", () => {
       ok: true,
       status: 200,
       text: vi.fn().mockResolvedValue("<p>Rendered</p>"),
+      json: vi.fn().mockResolvedValue({ results: sampleBlocks }),
     } as unknown as Response);
 
     vi.stubGlobal("fetch", fetchMock);
@@ -245,13 +242,20 @@ describe("ContentBlockPicker", () => {
   describe("hover preview", () => {
     test("it renders cached HTML on mark mouseover", async () => {
       const fetchMock = mockSuccessFetch();
+      const {
+        insertButton,
+        textareaWithButton: textarea,
+        pickerInstance: picker,
+      } = setupPickerWithInsertButton();
+      insertButton.click();
+
       // Clear the mock from beforeEach so we use the global fetch mock
       vi.mocked(picker.apiClient.fetchPreview).mockRestore();
 
-      textarea.value = "{{embed:contact:123}}";
+      textarea.value = sampleBlocks[0].embed_code;
       textarea.dispatchEvent(new Event("input"));
 
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
       // Wait for the mark to be rendered with the correct class
       await vi.waitFor(() => {
@@ -259,7 +263,9 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
-        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
+        expect(
+          picker.apiClient.getPreview(sampleBlocks[0].embed_code),
+        ).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(
@@ -270,21 +276,26 @@ describe("ContentBlockPicker", () => {
       textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
       await vi.advanceTimersByTimeAsync(embedPreviewDelayMs);
 
-      await vi.waitFor(() => {
-        expect(picker.preview.hidden).toBe(false);
-        expect(picker.preview.innerHTML).toContain("<p>Rendered</p>");
-      });
+      expect(picker.preview.hidden).toBe(false);
+      expect(picker.preview.innerHTML).toContain("<p>Rendered</p>");
     });
 
     test("it hides the preview on mark mouseout", async () => {
       const fetchMock = mockSuccessFetch();
+      const {
+        insertButton,
+        textareaWithButton: textarea,
+        pickerInstance: picker,
+      } = setupPickerWithInsertButton();
+      insertButton.click();
+
       // Clear the mock from beforeEach so we use the global fetch mock
       vi.mocked(picker.apiClient.fetchPreview).mockRestore();
 
-      textarea.value = "{{embed:contact:123}}";
+      textarea.value = sampleBlocks[0].embed_code;
       textarea.dispatchEvent(new Event("input"));
 
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
       // Wait for the mark to be rendered with the correct class
       await vi.waitFor(() => {
@@ -292,7 +303,9 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
-        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
+        expect(
+          picker.apiClient.getPreview(sampleBlocks[0].embed_code),
+        ).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(
@@ -312,13 +325,19 @@ describe("ContentBlockPicker", () => {
 
     test("it hides the preview when the cursor moves off the mark", async () => {
       const fetchMock = mockSuccessFetch();
+      const {
+        insertButton,
+        textareaWithButton: textarea,
+        pickerInstance: picker,
+      } = setupPickerWithInsertButton();
+      insertButton.click();
       // Clear the mock from beforeEach so we use the global fetch mock
       vi.mocked(picker.apiClient.fetchPreview).mockRestore();
 
-      textarea.value = "{{embed:contact:123}}";
+      textarea.value = sampleBlocks[0].embed_code;
       textarea.dispatchEvent(new Event("input"));
 
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
 
       // Wait for the mark to be rendered with the correct class
       await vi.waitFor(() => {
@@ -326,7 +345,9 @@ describe("ContentBlockPicker", () => {
           ".content-block-highlight__mark",
         );
         expect(mark).not.toBeNull();
-        expect(picker.apiClient.get("{{embed:contact:123}}")).toBeDefined();
+        expect(
+          picker.apiClient.getPreview(sampleBlocks[0].embed_code),
+        ).toBeDefined();
       });
 
       const mark = picker.highlight.querySelector(
@@ -360,6 +381,37 @@ describe("ContentBlockPicker", () => {
 
       expect(picker.preview.innerHTML).toBe("");
       expect(picker.preview.getAttribute("aria-hidden")).not.toBe("false");
+    });
+
+    test("it does not show a preview when the embed code does not match any returned blocks", async () => {
+      mockSuccessFetch();
+      const {
+        insertButton,
+        textareaWithButton: textarea,
+        pickerInstance: picker,
+      } = setupPickerWithInsertButton();
+      insertButton.click();
+
+      // Clear the mock from beforeEach so we use the global fetch mock
+      vi.mocked(picker.apiClient.fetchPreview).mockRestore();
+
+      textarea.value = "{{embed:invalid-embed-code!}}";
+      textarea.dispatchEvent(new Event("input"));
+
+      const mark = picker.highlight.querySelector(
+        ".content-block-highlight__mark",
+      );
+      vi.spyOn(picker, "getMarkUnderCursor").mockReturnValue(
+        mark as HTMLElement,
+      );
+
+      textarea.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }));
+
+      const showElementSpy = vi.spyOn(picker, "showElement");
+
+      expect(picker.preview.hidden).toBe(true);
+      expect(picker.preview.innerHTML).not.toContain("<p>Rendered</p>");
+      expect(showElementSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -467,16 +519,16 @@ describe("ContentBlockPicker", () => {
         topLevelList.children,
       ) as HTMLLIElement[];
 
-      expect(topLevelItems[0].childNodes[0]?.textContent).toBe(
-        "Sample Pension Block 1",
-      );
+      expect(
+        topLevelItems[0].querySelector("button")?.textContent?.trim(),
+      ).toBe("Sample Pension Block 1");
       expect(topLevelItems[0].dataset.embedCode).toBe(
         "{{embed:content_block_pension:sample-pension-1}}",
       );
       expect(topLevelItems[0].querySelector("ul")).toBeNull();
-      expect(topLevelItems[1].childNodes[0]?.textContent).toBe(
-        "Sample Time Period Block 1",
-      );
+      expect(
+        topLevelItems[1].querySelector("button")?.textContent?.trim(),
+      ).toBe("Sample Time Period Block 1");
       expect(topLevelItems[1].dataset.embedCode).toBe(
         "{{embed:content_block_time_period:sample-time-1}}",
       );
@@ -484,10 +536,11 @@ describe("ContentBlockPicker", () => {
         topLevelItems[1].querySelectorAll("ul > li"),
       ) as HTMLLIElement[];
 
-      expect(formatItems.map((item) => item.textContent)).toEqual([
-        "long_form",
-        "years",
-      ]);
+      expect(
+        formatItems.map((item) =>
+          item.querySelector("button")?.textContent?.trim(),
+        ),
+      ).toEqual(["long_form", "years"]);
       expect(formatItems[0].dataset.embedCode).toBe(
         "{{embed:content_block_time_period:sample-time-1#long_form}}",
       );
