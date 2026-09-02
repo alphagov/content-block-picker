@@ -2,7 +2,8 @@
   "name": "content-block-picker",
   "version": "1.0.2",
   "main": "./dist/content-block-picker.umd.js",
-  "module": "./dist/content-block-picker.esm.js",
+  "module": "./dist/content-block-picker.es.js",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
