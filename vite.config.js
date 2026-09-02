@@ -17,13 +17,12 @@ export default defineConfig({
   },
   build: {
     lib: {
-      entry: resolve(__dirname, "src/content-block-picker.ts"),
+      entry: resolve(import.meta.dirname, "src/content-block-picker.ts"),
       name: "content-block-picker",
       fileName: "content-block-picker",
     },
     rollupOptions: {
       output: {
-        inlineDynamicImports: true,
         entryFileNames: "[name].[format].js",
       },
     },
@@ -41,7 +40,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      govuk: resolve(__dirname, "node_modules/govuk-frontend/dist/govuk"),
+      govuk: resolve(
+        import.meta.dirname,
+        "node_modules/govuk-frontend/dist/govuk",
+      ),
     },
   },
   test: {
