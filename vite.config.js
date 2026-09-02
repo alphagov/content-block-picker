@@ -16,6 +16,7 @@ export default defineConfig({
     },
   },
   build: {
+    copyPublicDir: false,
     lib: {
       entry: resolve(import.meta.dirname, "src/content-block-picker.ts"),
       name: "content-block-picker",
