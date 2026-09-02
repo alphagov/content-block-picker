@@ -8,6 +8,7 @@ import { APIClient } from "./content-block/api-client.ts";
 import type { ContentBlock, EmbedCodePreview } from "./@types";
 import nunjucksEnv from "./nunjucks-env.ts";
 import blockListTemplate from "./templates/block-list.njk?raw";
+import { EmbedCodeHighlight } from "./content-block/embed-code-highlight.ts";
 
 export interface ContentBlockPickerOptions {
   baseUrl: string;
@@ -27,6 +28,7 @@ export class ContentBlockPicker {
   blockListElement: HTMLDivElement | null = null;
   blockListRequest?: Promise<ContentBlock[]>;
   updateHighlightId = 0;
+  embedCodeHighlight: EmbedCodeHighlight;
 
   constructor(element: Element, options: ContentBlockPickerOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -42,9 +44,16 @@ export class ContentBlockPicker {
 
     this.textarea.classList.add("content-block-highlight__input");
 
-    this.updateHighlight();
+    this.embedCodeHighlight = new EmbedCodeHighlight(
+      this.apiClient,
+      this.highlight,
+    );
+    this.embedCodeHighlight.update(this.textarea.value);
 
-    this.textarea.addEventListener("input", () => this.updateHighlight());
+    this.textarea.addEventListener("input", () => {
+      this.embedCodeHighlight.update(this.textarea.value);
+    });
+
     this.textarea.addEventListener("scroll", () => {
       this.syncScroll();
       this.onTextareaMouseLeave();
