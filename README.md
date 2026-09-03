@@ -91,14 +91,24 @@ In future, we'd like to provide previews of the content blocks when the user hov
 
 This package is published to npm at https://www.npmjs.com/package/content-block-picker. In order to trigger a new release we simply need to:
 
-1. Bump the version number in the package.json file.
+1. Create a release branch from main, e.g. `release/2.1.3`.
+
+2. Bump the version number in the package.json file.
 
    This can be done with the `npm version` command, e.g. `npm version minor` or `npm version 2.1.3`.
 
-2. Commit and merge this change to main.
+3. Tag the release at the new version number, e.g. `git tag v2.1.3`.
 
-   Observing the usual PR process.
+4. Generate a changelog entry for the release in the `CHANGELOG.md` file using the helper script:
+   - Run this with `./bin/generate-changelog-entry.sh PREVIOUS_TAG NEW_TAG`, e.g. `./bin/generate-changelog-entry.sh v2.1.2 v2.1.3`
+   - This will output a changelog entry to the console
+   - Copy and paste into the `CHANGELOG.md` file.
 
-3. Run the 'Publish to NPM' action in GitHub Actions.
+5. Commit, push, and merge this change to main.
+
+   - `git push --tags`
+   - Observing the usual PR process.
+
+6. Run the 'Publish to NPM' action in GitHub Actions.
 
    Navigate to https://github.com/alphagov/content-block-picker/actions/workflows/publish-to-npm.yml and run a new workflow.
