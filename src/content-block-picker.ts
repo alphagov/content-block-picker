@@ -8,6 +8,7 @@ import { APIClient } from "./content-block/api-client.ts";
 import type { ContentBlock, EmbedCodePreview } from "./@types";
 import nunjucksEnv from "./nunjucks-env.ts";
 import blockListTemplate from "./templates/block-list.njk?raw";
+import { EmbedCodeHighlight } from "./content-block/embed-code-highlight.ts";
 
 export interface ContentBlockPickerOptions {
   baseUrl: string;
@@ -26,7 +27,7 @@ export class ContentBlockPicker {
   currentMarkUnderCursor: HTMLElement | null = null;
   blockListElement: HTMLDivElement | null = null;
   blockListRequest?: Promise<ContentBlock[]>;
-  updateHighlightId = 0;
+  embedCodeHighlight: EmbedCodeHighlight;
 
   constructor(element: Element, options: ContentBlockPickerOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
@@ -42,9 +43,16 @@ export class ContentBlockPicker {
 
     this.textarea.classList.add("content-block-highlight__input");
 
-    this.updateHighlight();
+    this.embedCodeHighlight = new EmbedCodeHighlight(
+      this.highlight,
+      this.apiClient,
+    );
+    this.embedCodeHighlight.update(this.textarea.value);
 
-    this.textarea.addEventListener("input", () => this.updateHighlight());
+    this.textarea.addEventListener("input", () => {
+      this.embedCodeHighlight.update(this.textarea.value);
+    });
+
     this.textarea.addEventListener("scroll", () => {
       this.syncScroll();
       this.onTextareaMouseLeave();
@@ -286,69 +294,6 @@ export class ContentBlockPicker {
         this.blockListRequest = undefined;
       }
     }
-  }
-
-  async updateHighlight() {
-    const currentUpdateId = ++this.updateHighlightId;
-    let text = this.textarea.value;
-
-    if (text[text.length - 1] === "\n") {
-      text += " ";
-    }
-
-    // Escape HTML entities
-    text = text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-
-    this.highlight.innerHTML = text.replace(
-      embedRegex,
-      '<mark class="content-block-highlight__mark">$&</mark>',
-    );
-
-    const allEmbedCodes = Array.from(text.matchAll(embedRegex));
-
-    if (allEmbedCodes.length === 0) {
-      return;
-    }
-
-    const previews = await Promise.all(
-      allEmbedCodes.map(([embedCode]) =>
-        this.apiClient.fetchPreview(embedCode),
-      ),
-    );
-
-    // Only apply results if this is still the latest updateHighlight call
-    if (currentUpdateId !== this.updateHighlightId) {
-      return;
-    }
-
-    let result = "";
-    let lastIndex = 0;
-
-    allEmbedCodes.forEach((embedCodeRegex, index) => {
-      const preview = previews[index];
-      const matchStart = embedCodeRegex.index!;
-      const matchEnd = matchStart + embedCodeRegex[0].length;
-
-      // Append text before this match
-      result += text.slice(lastIndex, matchStart);
-
-      // Append the marked-up embed code
-      let css = "content-block-highlight__mark";
-      if (!preview.valid) {
-        css += " content-block-highlight__mark--invalid";
-      }
-      result += `<mark class="${css}">${embedCodeRegex[0]}</mark>`;
-
-      lastIndex = matchEnd;
-    });
-
-    // Append any remaining text after the last match
-    result += text.slice(lastIndex);
-
-    this.highlight.innerHTML = result;
   }
 
   async onTextareaMouseMove(event: MouseEvent) {
