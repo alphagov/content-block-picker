@@ -33,6 +33,24 @@ Something else <mark class="content-block-highlight__mark">{{embed:content_block
     });
   });
 
+  describe("embedCodeMatches", () => {
+    it("should return one RegExpExecArray for each embed code in the document", () => {
+      const matches = embedCodeHighlight.embedCodeMatches(textWithEmbedCodes);
+
+      expect(matches.length).toBe(2);
+
+      const [match1, match2] = matches;
+
+      expect(match1[0]).toBe(mockEmbedCode1);
+      expect(match1.index).toBeDefined();
+      expect(match1.input).toBeDefined();
+
+      expect(match2[0]).toBe(mockEmbedCode2);
+      expect(match2.index).toBeDefined();
+      expect(match2.input).toBeDefined();
+    });
+  });
+
   describe("update", () => {
     it("should sanitise the input text before processing", async () => {
       const mockHighlightAllEmbedCodes = vi.spyOn(
