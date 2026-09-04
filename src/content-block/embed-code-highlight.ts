@@ -18,6 +18,10 @@ export class EmbedCodeHighlight {
     );
   }
 
+  embedCodeMatches(text: string) {
+    return Array.from(text.matchAll(embedRegex));
+  }
+
   private sanitiseText(text: string) {
     return text
       .replace(/&/g, "&amp;")
