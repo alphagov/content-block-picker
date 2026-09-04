@@ -5,6 +5,8 @@ import nunjucksEnv from "../nunjucks-env.ts";
 import markTemplate from "../templates/mark.njk?raw";
 
 export class EmbedCodeHighlight {
+  private updateHighlightId: number = 0;
+
   constructor(
     private overlay: HTMLElement,
     private apiClient: APIClient,
@@ -73,12 +75,38 @@ export class EmbedCodeHighlight {
   private async fetchEmbedCodeValidity(
     embedCodeMatches: RegExpMatchArray[],
   ): Promise<EmbedCodePreview[]> {
-    const previews = await
-      Promise.all(
-        embedCodeMatches.map((match) =>
-          this.apiClient.fetchPreview(match[0]),
+    try {
+      const previews = await this.abortIfStale<EmbedCodePreview[]>(() =>
+        Promise.all(
+          embedCodeMatches.map((match) =>
+            this.apiClient.fetchPreview(match[0]),
+          ),
         ),
       );
-    return previews;
+      return previews;
+    } catch (e) {
+      return Promise.resolve([]);
+    }
+  }
+
+  private async abortIfStale<T>(asyncFn: Function): Promise<T> {
+    const currentUpdateId = ++this.updateHighlightId;
+
+    const result = await asyncFn();
+
+    if (currentUpdateId !== this.updateHighlightId) {
+      throw new StaleRequestError(
+        "This request has been superseded by another request",
+      );
+    }
+
+    return result;
+  }
+}
+
+class StaleRequestError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StaleRequestError";
   }
 }

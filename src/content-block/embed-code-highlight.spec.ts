@@ -97,6 +97,14 @@ Something else <mark class="content-block-highlight__mark">{{embed:content_block
         embedCodeHighlight,
         "highlightAllEmbedCodes",
       );
+      const mockEmbedCodeMatches = vi.spyOn(
+        embedCodeHighlight,
+        "embedCodeMatches",
+      );
+      const mockHighlightInvalidEmbedCodes = vi.spyOn(
+        embedCodeHighlight,
+        "highlightEmbedCodeValidity",
+      );
       vi.spyOn(mockApiClient, "fetchPreview").mockResolvedValue(
         mockEmbedCodePreview,
       );
@@ -108,6 +116,10 @@ Something else <mark class="content-block-highlight__mark">{{embed:content_block
       await embedCodeHighlight.update(unsanitizedText);
 
       expect(mockHighlightAllEmbedCodes).toHaveBeenCalledWith(sanitizedText);
+      expect(mockEmbedCodeMatches).toHaveBeenCalledWith(sanitizedText);
+      expect(mockHighlightInvalidEmbedCodes.mock.calls[0][0]).toBe(
+        sanitizedText,
+      );
     });
 
     it("should highlight all embed codes immediately, without waiting for API responses", () => {
@@ -143,6 +155,49 @@ Invalid: {{embed:content_block_contact:bad}}`);
       expect(overlay.innerHTML).toBe(`
 Valid:   <mark class="content-block-highlight__mark">{{embed:content_block_contact:example}}</mark>
 Invalid: <mark class="content-block-highlight__mark--invalid">{{embed:content_block_contact:bad}}</mark>`);
+    });
+  });
+
+  describe("fetchEmbedCodeValidity", () => {
+    it("should fetch once for each embed code", async () => {
+      const fetchPreviewSpy = vi
+        .spyOn(mockApiClient, "fetchPreview")
+        .mockResolvedValue(mockEmbedCodePreview);
+
+      await embedCodeHighlight.update(`
+        ${mockEmbedCode1}
+        ${mockEmbedCode2}`);
+
+      expect(fetchPreviewSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("should return an empty list if the request has been superseded by a new request", async () => {
+      const fetchPreviewSpy = vi
+        .spyOn(mockApiClient, "fetchPreview")
+        .mockImplementation(async (embedCode: string) => {
+          if (embedCode === mockEmbedCode1) {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          }
+          return Promise.resolve(mockEmbedCodePreview);
+        });
+      const fetchEmbedCodeValiditySpy = vi.spyOn(
+        embedCodeHighlight,
+        // @ts-ignore - Spy on private method
+        "fetchEmbedCodeValidity",
+      );
+      const highlightEmbedCodeValiditySpy = vi.spyOn(
+        embedCodeHighlight,
+        "highlightEmbedCodeValidity",
+      );
+
+      const update1Promise = embedCodeHighlight.update(`${mockEmbedCode1}`);
+      const update2Promise = embedCodeHighlight.update(`${mockEmbedCode2}`);
+
+      await Promise.all([update1Promise, update2Promise]);
+
+      expect(fetchPreviewSpy).toHaveBeenCalledTimes(2);
+      expect(fetchEmbedCodeValiditySpy).toHaveBeenCalledTimes(2);
+      expect(highlightEmbedCodeValiditySpy).toHaveBeenCalledTimes(1);
     });
   });
 });
