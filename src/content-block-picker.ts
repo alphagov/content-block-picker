@@ -393,17 +393,4 @@ export class ContentBlockPicker {
       this.hoverPreviewTimeoutId = undefined;
     }
   }
-
-  static initAll(
-    options: ContentBlockPickerOptions,
-    scope: ParentNode = document,
-  ): ContentBlockPicker[] {
-    const elements = scope.querySelectorAll(
-      '[data-module~="content-block-highlight"]',
-    );
-
-    return Array.from(elements).map(
-      (element) => new ContentBlockPicker(element, options),
-    );
-  }
 }

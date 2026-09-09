@@ -927,44 +927,4 @@ describe("ContentBlockPicker", () => {
       expect(secondPicker.blockListElement?.hidden).toBe(false);
     });
   });
-
-  describe("initAll", () => {
-    test("it initializes multiple instances based on data-module", () => {
-      document.body.innerHTML = `
-        <textarea data-module="content-block-highlight"></textarea>
-        <textarea data-module="content-block-highlight"></textarea>
-      `;
-      const pickers = ContentBlockPicker.initAll({ baseUrl });
-      expect(pickers.length).toBe(2);
-      expect(pickers[0]).toBeInstanceOf(ContentBlockPicker);
-    });
-
-    test("it initializes given a data module with multiple values", () => {
-      document.body.innerHTML = `
-        <textarea data-module="content-block-highlight some-other-module"></textarea>
-      `;
-      const pickers = ContentBlockPicker.initAll({ baseUrl });
-      expect(pickers.length).toBe(1);
-      expect(pickers[0]).toBeInstanceOf(ContentBlockPicker);
-    });
-
-    test("it passes baseUrl from options to API requests", async () => {
-      const fetchMock = mockSuccessFetch();
-      document.body.innerHTML = `
-        <textarea data-module="content-block-highlight">{{embed:contact:123}}</textarea>
-      `;
-
-      const [pickerInstance] = ContentBlockPicker.initAll({
-        baseUrl: "https://publisher.test",
-      });
-
-      pickerInstance.textarea.dispatchEvent(new Event("input"));
-
-      await vi.waitFor(() => {
-        expect(fetchMock).toHaveBeenCalledWith(
-          "https://publisher.test/api/blocks/%7B%7Bembed%3Acontact%3A123%7D%7D/render",
-        );
-      });
-    });
-  });
 });
