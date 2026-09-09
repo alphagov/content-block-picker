@@ -3,6 +3,7 @@
   "version": "1.1.0",
   "main": "./dist/content-block-picker.umd.js",
   "module": "./dist/content-block-picker.es.js",
+  "style": "./dist/content-block-picker.css",
   "type": "module",
   "scripts": {
     "dev": "vite",
