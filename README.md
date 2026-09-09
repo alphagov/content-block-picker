@@ -42,38 +42,30 @@ It works by overlaying a transparent textarea on top of a styled `<div>` that co
 
 ### Usage
 
-To initialise the picker on a textarea, add the `data-module="content-block-highlight"` attribute:
+To initialise the picker on a textarea, simply instantiate a new ContentBlockPicker specifying the following:
 
-```html
-<textarea data-module="content-block-highlight"></textarea>
-```
+- `baseUrl` : This is the URL of the Content Block Manager API.
+- `textarea` : This is an HTMLTextArea element where users enter document body content.
+- `insertButton` : This is the button users will click to view the list of available blocks.
+- `embedPreviewDelayMs` : (optional) This is the artificial delay between a user hovering over an embed and the preview being displayed.
 
-Then initialise the Javascript:
-
-```javascript
-import { ContentBlockPicker } from "content-block-picker";
-
-ContentBlockPicker.initAll({
-  baseUrl: "http://content-block-manager.dev.gov.uk",
-});
-// or
-ContentBlockPicker.initAll({
-  baseUrl: "http://content-block-manager.dev.gov.uk",
-  embedPreviewDelayMs: 500,
-});
-```
-
-### Listing available blocks
-
-The picker can show editors the content blocks available to them so they don't need to know an embed code up front. Add a trigger button and point the textarea at it with the `data-cbp-insert-block-button` attribute, set to the button's `id`:
+For example:
 
 ```html
 <button id="insert-content-block-button">Insert block</button>
-<textarea
-  data-module="content-block-highlight"
-  data-cbp-insert-block-button="insert-content-block-button"
-></textarea>
+
+<textarea class="my-textarea"></textarea>
+
+<script>
+  new ContentBlockPicker({
+    baseUrl: "<%= Plek.find('content-block-manager') %>)",
+    textarea: document.querySelector(".my-textarea"),
+    insertButton: document.getElementById("insert-content-block-button"),
+  });
+</script>
 ```
+
+The picker can show editors the content blocks available to them so they don't need to know an embed code up front.
 
 Clicking the button opens an overlay that fetches the blocks from `GET {baseUrl}/api/blocks` and lists each one by title, with its available formats nested underneath. The list is loaded fresh each time it is opened (so it always reflects the current state of the blocks) and is dismissed by pressing `Escape`, clicking the list, or clicking anywhere outside it.
 
