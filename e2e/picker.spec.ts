@@ -19,8 +19,7 @@ test.describe("Content Block Picker", () => {
     const textarea = page.locator("textarea.content-block-highlight__input");
     const highlight = page.locator(".content-block-highlight__highlight");
 
-    const embedCode =
-      "{{embed:content_block_pension:1690ab79-1880-461e-99e4-ed146fd9efab}}";
+    const embedCode = "{{embed:content_block_pension:1690ab79-1880-461e-99e4-ed146fd9efab}}";
 
     await textarea.fill(embedCode);
 
@@ -28,14 +27,11 @@ test.describe("Content Block Picker", () => {
     await expect(mark).toHaveText(embedCode);
   });
 
-  test("it detects and highlights embed codes with a format specifier", async ({
-    page,
-  }) => {
+  test("it detects and highlights embed codes with a format specifier", async ({ page }) => {
     const textarea = page.locator("textarea.content-block-highlight__input");
     const highlight = page.locator(".content-block-highlight__highlight");
 
-    const embedCode =
-      "{{embed:content_block_pension:1690ab79-1880-461e-99e4-ed146fd9efab#some_format}}";
+    const embedCode = "{{embed:content_block_pension:1690ab79-1880-461e-99e4-ed146fd9efab#some_format}}";
 
     await textarea.fill(embedCode);
 
@@ -43,9 +39,7 @@ test.describe("Content Block Picker", () => {
     await expect(mark).toHaveText(embedCode);
   });
 
-  test("it syncs scrolling between textarea and highlight div", async ({
-    page,
-  }) => {
+  test("it syncs scrolling between textarea and highlight div", async ({ page }) => {
     const textarea = page.locator("textarea.content-block-highlight__input");
     const highlight = page.locator(".content-block-highlight__highlight");
 
@@ -88,9 +82,7 @@ test.describe("Content Block Picker", () => {
 });
 
 test.describe("List available blocks", () => {
-  test("it fetches and displays blocks when the insert button is clicked", async ({
-    page,
-  }) => {
+  test("it fetches and displays blocks when the insert button is clicked", async ({ page }) => {
     const mockBlocks = {
       results: [
         {
@@ -146,57 +138,33 @@ test.describe("List available blocks", () => {
 
     // Check first block (no formats)
     const firstBlock = topLevelList.locator(":scope > li").first();
-    await expect(firstBlock.locator(":scope > button")).toHaveText(
-      "Pension Block A",
-    );
-    await expect(firstBlock).toHaveAttribute(
-      "data-embed-code",
-      "{{embed:content_block_pension:abc123}}",
-    );
+    await expect(firstBlock.locator(":scope > button")).toHaveText("Pension Block A");
+    await expect(firstBlock).toHaveAttribute("data-embed-code", "{{embed:content_block_pension:abc123}}");
 
     // Check second block (with formats)
     const secondBlock = topLevelList.locator(":scope > li").nth(1);
-    await expect(secondBlock.locator(":scope > button")).toHaveText(
-      "Time Period Block B",
-    );
-    await expect(secondBlock).toHaveAttribute(
-      "data-embed-code",
-      "{{embed:content_block_time_period:def456}}",
-    );
+    await expect(secondBlock.locator(":scope > button")).toHaveText("Time Period Block B");
+    await expect(secondBlock).toHaveAttribute("data-embed-code", "{{embed:content_block_time_period:def456}}");
 
     // Check that formats are displayed as nested list for second block
     const secondBlockFormatsList = secondBlock.locator(":scope > ul");
     await expect(secondBlockFormatsList).toBeVisible();
     await expect(secondBlockFormatsList.locator(":scope > li")).toHaveCount(2);
-    await expect(
-      secondBlockFormatsList
-        .locator(":scope > li")
-        .first()
-        .locator(":scope > button"),
-    ).toHaveText("long_form");
-    await expect(
-      secondBlockFormatsList
-        .locator(":scope > li")
-        .nth(1)
-        .locator(":scope > button"),
-    ).toHaveText("years");
-    await expect(
-      secondBlockFormatsList.locator(":scope > li").first(),
-    ).toHaveAttribute(
+    await expect(secondBlockFormatsList.locator(":scope > li").first().locator(":scope > button")).toHaveText(
+      "long_form",
+    );
+    await expect(secondBlockFormatsList.locator(":scope > li").nth(1).locator(":scope > button")).toHaveText("years");
+    await expect(secondBlockFormatsList.locator(":scope > li").first()).toHaveAttribute(
       "data-embed-code",
       "{{embed:content_block_time_period:def456#long_form}}",
     );
-    await expect(
-      secondBlockFormatsList.locator(":scope > li").nth(1),
-    ).toHaveAttribute(
+    await expect(secondBlockFormatsList.locator(":scope > li").nth(1)).toHaveAttribute(
       "data-embed-code",
       "{{embed:content_block_time_period:def456#years}}",
     );
   });
 
-  test("it hides the block list when clicking outside of it", async ({
-    page,
-  }) => {
+  test("it hides the block list when clicking outside of it", async ({ page }) => {
     const mockBlocks = {
       results: [
         {
@@ -236,9 +204,7 @@ test.describe("List available blocks", () => {
     await expect(blockList).toHaveAttribute("aria-hidden", "true");
   });
 
-  test("it displays an error message when block fetch fails", async ({
-    page,
-  }) => {
+  test("it displays an error message when block fetch fails", async ({ page }) => {
     // Mock the API endpoint to return a 500 error
     await page.route(/\/api\/blocks$/, (route) => {
       route.fulfill({
@@ -259,9 +225,7 @@ test.describe("List available blocks", () => {
     await expect(blockList).toContainText("Unable to load blocks.");
   });
 
-  test("it inserts the embed code into the textarea and returns focus when a block is clicked", async ({
-    page,
-  }) => {
+  test("it inserts the embed code into the textarea and returns focus when a block is clicked", async ({ page }) => {
     const mockBlocks = {
       results: [
         {
@@ -296,9 +260,7 @@ test.describe("List available blocks", () => {
     await firstBlockButton.click();
 
     // Embed code should appear in the textarea
-    await expect(textarea).toHaveValue(
-      "{{embed:content_block_pension:abc123}}",
-    );
+    await expect(textarea).toHaveValue("{{embed:content_block_pension:abc123}}");
 
     // Block list should be dismissed
     await expect(blockList).toHaveAttribute("aria-hidden", "true");

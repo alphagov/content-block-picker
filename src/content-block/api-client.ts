@@ -1,9 +1,4 @@
-import {
-  BlockType,
-  ContentBlock,
-  BlocksResponse,
-  EmbedCodePreview,
-} from "../@types";
+import { BlockType, ContentBlock, BlocksResponse, EmbedCodePreview } from "../@types";
 import { isValidEmbedCode } from "./regex.ts";
 
 const supportedBlockTypes = new Set<string>(Object.values(BlockType));
@@ -22,9 +17,7 @@ function isSupportedContentBlock(block: ContentBlock): boolean {
     return true;
   }
 
-  console.warn(
-    `Skipping unsupported block type "${block.block_type}" for block "${block.title}".`,
-  );
+  console.warn(`Skipping unsupported block type "${block.block_type}" for block "${block.title}".`);
   return false;
 }
 
@@ -72,10 +65,7 @@ export class APIClient {
     return supportedBlocks;
   }
 
-  private logAndReturnError(
-    message: string,
-    error: Error | null = null,
-  ): EmbedCodePreview {
+  private logAndReturnError(message: string, error: Error | null = null): EmbedCodePreview {
     console.warn(message, error);
     return {
       html: null,
@@ -108,17 +98,12 @@ export class APIClient {
     return result;
   }
 
-  private async fetchFromNetwork(
-    embedCode: string,
-    url: string,
-  ): Promise<EmbedCodePreview> {
+  private async fetchFromNetwork(embedCode: string, url: string): Promise<EmbedCodePreview> {
     try {
       const response = await fetch(url);
 
       if (!response.ok) {
-        return this.logAndReturnError(
-          `Failed to fetch block ${embedCode} (${response.status})`,
-        );
+        return this.logAndReturnError(`Failed to fetch block ${embedCode} (${response.status})`);
       }
 
       return {
@@ -147,20 +132,13 @@ export class APIClient {
       throw new Error(`Invalid embed code: ${embedCode}`);
     }
 
-    const path = this.RENDER_PATH.replace(
-      ":embedCode",
-      encodeURIComponent(embedCode),
-    );
+    const path = this.RENDER_PATH.replace(":embedCode", encodeURIComponent(embedCode));
     const fullUrl = new URL(path, this.baseUrl);
     if (fullUrl.origin !== this.baseUrl.origin) {
-      throw new Error(
-        `Invalid URL: ${fullUrl} is not on the same origin as ${this.baseUrl}`,
-      );
+      throw new Error(`Invalid URL: ${fullUrl} is not on the same origin as ${this.baseUrl}`);
     }
     if (!fullUrl.pathname.startsWith(this.baseUrl.pathname)) {
-      throw new Error(
-        `Invalid URL: ${fullUrl} is not within the base path of ${this.baseUrl}`,
-      );
+      throw new Error(`Invalid URL: ${fullUrl} is not within the base path of ${this.baseUrl}`);
     }
     return fullUrl.toString();
   }

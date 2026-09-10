@@ -8,10 +8,7 @@ export const sanitizeHtml = (html: string, embedcode: string): string => {
   const deniedTags = new Set<string>();
 
   const hook = (_node: Node, data: UponSanitizeElementHookEvent) => {
-    const tagName =
-      typeof data.tagName === "string"
-        ? data.tagName.toLowerCase()
-        : data.tagName;
+    const tagName = typeof data.tagName === "string" ? data.tagName.toLowerCase() : data.tagName;
 
     if (tagName && data.allowedTags[tagName] === undefined) {
       if (tagName !== "body" && tagName !== "html") {
@@ -49,10 +46,7 @@ export const createHoverPreviewElement = (): HTMLDivElement => {
   return div;
 };
 
-export const makePreviewContent = (
-  html: string,
-  blockData: ContentBlock,
-): string => {
+export const makePreviewContent = (html: string, blockData: ContentBlock): string => {
   return nunjucksEnv.renderString(hoverPreviewTemplate, {
     html: sanitizeHtml(html, blockData.embed_code),
     blockData,

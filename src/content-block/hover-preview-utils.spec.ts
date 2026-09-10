@@ -1,9 +1,5 @@
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import {
-  createHoverPreviewElement,
-  makePreviewContent,
-  sanitizeHtml,
-} from "./hover-preview-utils";
+import { createHoverPreviewElement, makePreviewContent, sanitizeHtml } from "./hover-preview-utils";
 import { BlockType } from "../@types";
 
 describe("createHoverPreviewElement", () => {
@@ -43,9 +39,7 @@ describe("sanitizeHtml", () => {
     const result = sanitizeHtml(html, "embedcode");
 
     expect(result).toBe("<div>Safe wrapped text content</div>");
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("disallowed HTML tags"),
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("disallowed HTML tags"));
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("section"));
 
     warnSpy.mockRestore();
@@ -53,14 +47,11 @@ describe("sanitizeHtml", () => {
 
   test("removes multiple different disallowed tags", () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const html =
-      "<div><section>text1</section><p>Good</p><article>text2</article></div>";
+    const html = "<div><section>text1</section><p>Good</p><article>text2</article></div>";
     const result = sanitizeHtml(html, "embedcode");
 
     expect(result).toBe("<div>text1<p>Good</p>text2</div>");
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining("section, article"),
-    );
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("section, article"));
 
     warnSpy.mockRestore();
   });
@@ -198,8 +189,6 @@ describe("makePreviewContent", () => {
   test("returns sanitized HTML unchanged if already safe", () => {
     const html = "<div><p>Safe content</p><strong>Bold</strong></div>";
     const result = makePreviewContent(html, blockData);
-    expect(result).toContain(
-      "<div><p>Safe content</p><strong>Bold</strong></div>",
-    );
+    expect(result).toContain("<div><p>Safe content</p><strong>Bold</strong></div>");
   });
 });

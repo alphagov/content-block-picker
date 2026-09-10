@@ -26,16 +26,10 @@ export class EmbedCodeHighlight {
   }
 
   highlightAllEmbedCodes(text: string) {
-    this.overlay.innerHTML = text.replace(embedRegex, (embedCode) =>
-      this.createMark(embedCode),
-    );
+    this.overlay.innerHTML = text.replace(embedRegex, (embedCode) => this.createMark(embedCode));
   }
 
-  highlightEmbedCodeValidity(
-    text: string,
-    embedCodeMatches: RegExpExecArray[],
-    previews: EmbedCodePreview[],
-  ) {
+  highlightEmbedCodeValidity(text: string, embedCodeMatches: RegExpExecArray[], previews: EmbedCodePreview[]) {
     let result = "";
     let lastIndex = 0;
 
@@ -61,10 +55,7 @@ export class EmbedCodeHighlight {
   }
 
   private sanitiseText(text: string) {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
   private createMark(text: string, valid: boolean = true) {
@@ -72,16 +63,10 @@ export class EmbedCodeHighlight {
     return nunjucksEnv.renderString(markTemplate, { modifier, text }).trim();
   }
 
-  private async fetchEmbedCodeValidity(
-    embedCodeMatches: RegExpMatchArray[],
-  ): Promise<EmbedCodePreview[]> {
+  private async fetchEmbedCodeValidity(embedCodeMatches: RegExpMatchArray[]): Promise<EmbedCodePreview[]> {
     try {
       const previews = await this.abortIfStale<EmbedCodePreview[]>(() =>
-        Promise.all(
-          embedCodeMatches.map((match) =>
-            this.apiClient.fetchPreview(match[0]),
-          ),
-        ),
+        Promise.all(embedCodeMatches.map((match) => this.apiClient.fetchPreview(match[0]))),
       );
       return previews;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -96,9 +81,7 @@ export class EmbedCodeHighlight {
     const result = await asyncFn();
 
     if (currentUpdateId !== this.updateHighlightId) {
-      throw new StaleRequestError(
-        "This request has been superseded by another request",
-      );
+      throw new StaleRequestError("This request has been superseded by another request");
     }
 
     return result;

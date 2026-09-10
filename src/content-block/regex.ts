@@ -7,8 +7,7 @@ const supportedDocumentTypes = [
 ];
 
 // The regex used to find UUIDs
-const uuidRegex =
-  /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
+const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/;
 // The regex used to find content ID aliases
 const contentIdAliasRegex = /[a-z0-9\-–—]+/;
 // The regex to find the optional internal content path after the UUID, begins with '/'
@@ -32,7 +31,6 @@ const embedRegex = new RegExp(pattern, "g");
 
 const embedCodeRegex = new RegExp(`^${pattern}$`);
 
-export const isValidEmbedCode = (embedCode: string): boolean =>
-  embedCodeRegex.test(embedCode);
+export const isValidEmbedCode = (embedCode: string): boolean => embedCodeRegex.test(embedCode);
 
 export default embedRegex;

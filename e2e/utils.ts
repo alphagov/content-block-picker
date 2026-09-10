@@ -1,6 +1,4 @@
-export const convertHexToRGB = (
-  hex: string,
-): { red: number; green: number; blue: number } => {
+export const convertHexToRGB = (hex: string): { red: number; green: number; blue: number } => {
   hex = hex.replace(/^#/, "");
 
   // Parse the hex values into separate R, G, and B values

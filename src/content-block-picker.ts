@@ -1,9 +1,6 @@
 import "../scss/base.scss";
 import embedRegex, { formatSpecifierRegex } from "./content-block/regex.ts";
-import {
-  createHoverPreviewElement,
-  makePreviewContent,
-} from "./content-block/hover-preview-utils.ts";
+import { createHoverPreviewElement, makePreviewContent } from "./content-block/hover-preview-utils.ts";
 import { APIClient } from "./content-block/api-client.ts";
 import type { ContentBlock, EmbedCodePreview } from "./@types";
 import nunjucksEnv from "./nunjucks-env.ts";
@@ -34,12 +31,10 @@ export class ContentBlockPicker {
 
   constructor(options: ContentBlockPickerOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
-    if (!options.textarea)
-      throw new MissingArgumentError("options.textarea must be supplied");
+    if (!options.textarea) throw new MissingArgumentError("options.textarea must be supplied");
     this.textarea = options.textarea;
 
-    if (!options.insertButton)
-      throw new MissingArgumentError("options.insertButton must be supplied ");
+    if (!options.insertButton) throw new MissingArgumentError("options.insertButton must be supplied ");
     this.insertButton = options.insertButton;
 
     this.wrapper = this.createWrapper();
@@ -54,10 +49,7 @@ export class ContentBlockPicker {
 
     this.textarea.classList.add("content-block-highlight__input");
 
-    this.embedCodeHighlight = new EmbedCodeHighlight(
-      this.highlight,
-      this.apiClient,
-    );
+    this.embedCodeHighlight = new EmbedCodeHighlight(this.highlight, this.apiClient);
     this.embedCodeHighlight.update(this.textarea.value);
 
     this.textarea.addEventListener("input", () => {
@@ -68,13 +60,8 @@ export class ContentBlockPicker {
       this.syncScroll();
       this.onTextareaMouseLeave();
     });
-    this.textarea.addEventListener(
-      "mousemove",
-      (event) => void this.onTextareaMouseMove(event),
-    );
-    this.textarea.addEventListener("mouseleave", () =>
-      this.onTextareaMouseLeave(),
-    );
+    this.textarea.addEventListener("mousemove", (event) => void this.onTextareaMouseMove(event));
+    this.textarea.addEventListener("mouseleave", () => this.onTextareaMouseLeave());
 
     this.attachInsertBlockButtonListener(this.blockListElement);
     this.attachBlockListHideListeners(this.blockListElement);
@@ -154,17 +141,12 @@ export class ContentBlockPicker {
     });
   }
 
-  showBlockListElement(
-    button: typeof this.insertButton,
-    blockListElement: NonNullable<typeof this.blockListElement>,
-  ) {
+  showBlockListElement(button: typeof this.insertButton, blockListElement: NonNullable<typeof this.blockListElement>) {
     const buttonRect = button.getBoundingClientRect();
     const topMargin = 8;
     blockListElement.style.top = `${buttonRect.bottom + window.scrollY + topMargin}px`;
     blockListElement.style.left = `${buttonRect.left + window.scrollX}px`;
-    blockListElement.replaceChildren(
-      document.createTextNode("Fetching blocks..."),
-    );
+    blockListElement.replaceChildren(document.createTextNode("Fetching blocks..."));
     this.showElement(blockListElement);
     void this.fetchAndRenderBlockList();
   }
@@ -180,9 +162,7 @@ export class ContentBlockPicker {
   }
 
   private renderBlockListErrorState() {
-    this.blockListElement?.replaceChildren(
-      document.createTextNode("Unable to load blocks."),
-    );
+    this.blockListElement?.replaceChildren(document.createTextNode("Unable to load blocks."));
   }
 
   insertEmbedCode(embedCode: string) {
@@ -190,17 +170,13 @@ export class ContentBlockPicker {
     const selectionEnd = this.textarea.selectionEnd ?? 0;
     const currentValue = this.textarea.value;
 
-    const { insertPosition, textEndPosition } =
-      this.adjustInsertPositionIfSelectionOverlapsEmbedCode(
-        selectionStart,
-        selectionEnd,
-        currentValue,
-      );
+    const { insertPosition, textEndPosition } = this.adjustInsertPositionIfSelectionOverlapsEmbedCode(
+      selectionStart,
+      selectionEnd,
+      currentValue,
+    );
 
-    this.textarea.value =
-      currentValue.slice(0, insertPosition) +
-      embedCode +
-      currentValue.slice(textEndPosition);
+    this.textarea.value = currentValue.slice(0, insertPosition) + embedCode + currentValue.slice(textEndPosition);
 
     const newCursorPosition = insertPosition + embedCode.length;
     this.textarea.selectionStart = newCursorPosition;
@@ -222,11 +198,9 @@ export class ContentBlockPicker {
       const matchEnd = match.index! + match[0].length;
 
       // Check if selection overlaps with this embed code
-      const startOverlaps =
-        selectionStart >= matchStart && selectionStart < matchEnd;
+      const startOverlaps = selectionStart >= matchStart && selectionStart < matchEnd;
       const endOverlaps = selectionEnd > matchStart && selectionEnd <= matchEnd;
-      const fullyContains =
-        selectionStart < matchStart && selectionEnd > matchEnd;
+      const fullyContains = selectionStart < matchStart && selectionEnd > matchEnd;
 
       if (startOverlaps || endOverlaps || fullyContains) {
         rightmostOverlapEnd = Math.max(rightmostOverlapEnd, matchEnd);
@@ -249,16 +223,11 @@ export class ContentBlockPicker {
   private renderBlockList(blocks: ContentBlock[]) {
     if (!this.blockListElement) return;
 
-    this.blockListElement.innerHTML = nunjucksEnv.renderString(
-      blockListTemplate,
-      {
-        blocks,
-      },
-    );
+    this.blockListElement.innerHTML = nunjucksEnv.renderString(blockListTemplate, {
+      blocks,
+    });
 
-    const buttons = this.blockListElement.querySelectorAll<HTMLButtonElement>(
-      "button.cbp-insert-button",
-    );
+    const buttons = this.blockListElement.querySelectorAll<HTMLButtonElement>("button.cbp-insert-button");
     buttons.forEach((button) => {
       const embedCode = button.dataset.embedCode;
       if (embedCode) {
@@ -342,17 +311,11 @@ export class ContentBlockPicker {
     this.hideHoverPreview();
   }
 
-  private async renderHoverPreview(
-    mark: HTMLElement,
-    embedCode: string,
-    preview: EmbedCodePreview,
-  ) {
+  private async renderHoverPreview(mark: HTMLElement, embedCode: string, preview: EmbedCodePreview) {
     try {
       if (this.activeHoverEmbedCode !== embedCode || !preview.html) return;
 
-      const block = this.apiClient.getBlock(
-        embedCode.replace(formatSpecifierRegex, ""),
-      );
+      const block = this.apiClient.getBlock(embedCode.replace(formatSpecifierRegex, ""));
       if (!block) return;
 
       this.preview.innerHTML = makePreviewContent(preview.html, block);

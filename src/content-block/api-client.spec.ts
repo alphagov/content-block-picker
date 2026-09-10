@@ -124,9 +124,7 @@ describe("APIClient", () => {
 
     const result = client.buildUrl(embedCode);
 
-    expect(result).toBe(
-      `${baseUrl}/api/blocks/${encodeURIComponent(embedCode)}/render`,
-    );
+    expect(result).toBe(`${baseUrl}/api/blocks/${encodeURIComponent(embedCode)}/render`);
   });
 
   test("buildUrl rejects URLs outside the configured base path", () => {
@@ -135,9 +133,7 @@ describe("APIClient", () => {
     const client = new APIClient("https://example.test/picker/") as unknown as {
       buildUrl: (embed: string) => string;
     };
-    expect(() => client.buildUrl("{{embed:contact:abcd-123}}")).toThrow(
-      "is not within the base path",
-    );
+    expect(() => client.buildUrl("{{embed:contact:abcd-123}}")).toThrow("is not within the base path");
   });
 
   test("it caches and returns specific error messages for invalid embed codes", async () => {
@@ -229,9 +225,7 @@ describe("APIClient", () => {
 
       fetchMock.mockResolvedValue(createErrorResponse(500));
 
-      await expect(client.fetchAllBlocks()).rejects.toThrow(
-        "Failed to fetch blocks: 500",
-      );
+      await expect(client.fetchAllBlocks()).rejects.toThrow("Failed to fetch blocks: 500");
     });
 
     test("it skips unsupported block types and warns", async () => {
@@ -254,16 +248,12 @@ describe("APIClient", () => {
         ],
       };
 
-      fetchMock.mockResolvedValue(
-        createJsonResponse(payloadWithUnsupportedType),
-      );
+      fetchMock.mockResolvedValue(createJsonResponse(payloadWithUnsupportedType));
 
       const result = await client.fetchAllBlocks();
 
       expect(result).toEqual(payload.results);
-      expect(warnSpy).toHaveBeenCalledWith(
-        'Skipping unsupported block type "Unknown" for block "Unsupported Block".',
-      );
+      expect(warnSpy).toHaveBeenCalledWith('Skipping unsupported block type "Unknown" for block "Unsupported Block".');
       warnSpy.mockRestore();
     });
 
