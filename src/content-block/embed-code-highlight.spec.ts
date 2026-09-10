@@ -171,7 +171,6 @@ Invalid: <mark class="content-block-highlight__mark--invalid">{{embed:content_bl
         });
       const fetchEmbedCodeValiditySpy = vi.spyOn(
         embedCodeHighlight,
-        // @ts-expect-error - Spy on private method
         "fetchEmbedCodeValidity",
       );
       const highlightEmbedCodeValiditySpy = vi.spyOn(
@@ -214,7 +213,6 @@ Invalid: <mark class="content-block-highlight__mark--invalid">{{embed:content_bl
       );
       const fetchEmbedCodeValiditySpy = vi.spyOn(
         embedCodeHighlight,
-        // @ts-expect-error - Spy on private method
         "fetchEmbedCodeValidity",
       );
 
