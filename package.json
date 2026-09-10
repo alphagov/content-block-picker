@@ -19,7 +19,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@golevelup/ts-vitest": "^4.0.0",
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.63.0",
     "@types/dompurify": "^3.2.0",
     "@types/nunjucks": "^3.2.6",
     "eslint": "^10.9.1",
