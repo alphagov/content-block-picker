@@ -5,9 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## 9df97fd..v2.0.0 - 2026-09-10
 
-## 6c0aff0..HEAD - 2026-09-03
+- Expose CSS entrypoint
+- Move textarea and insertButton to named args in CBP
+- Remove unused initAll method
+- Replace existing highlight code with new version
+- Abort superseded requests to check embed codes
+- Highlight invalid codes
+- Add functionality to find all embed codes
+- Introduce EmbedCodeHighlight class
+
+## 6c0aff0..9df97fd - 2026-09-03
 
 - Improve SCSS bundling
 - Symlink fonts bundled with govuk-frontend
