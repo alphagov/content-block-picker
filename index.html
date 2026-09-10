@@ -71,12 +71,7 @@
           <button class="govuk-button" id="insert-content-block-button">
             Insert block
           </button>
-          <textarea
-            class="my-textarea govuk-textarea"
-            rows="12"
-            data-module="content-block-highlight"
-            data-cbp-insert-block-button="insert-content-block-button"
-          ></textarea>
+          <textarea class="my-textarea govuk-textarea" rows="12"></textarea>
         </div>
       </main>
     </div>
@@ -124,8 +119,10 @@
     </script>
     <script type="module">
       import { ContentBlockPicker } from "/src/content-block-picker.ts";
-      new ContentBlockPicker(document.querySelector(".my-textarea"), {
+      new ContentBlockPicker({
         baseUrl: "http://localhost:5173/",
+        textarea: document.querySelector(".my-textarea"),
+        insertButton: document.getElementById("insert-content-block-button"),
       });
     </script>
   </body>

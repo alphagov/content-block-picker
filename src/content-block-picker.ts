@@ -12,12 +12,15 @@ import { EmbedCodeHighlight } from "./content-block/embed-code-highlight.ts";
 
 export interface ContentBlockPickerOptions {
   baseUrl: string;
+  textarea: HTMLTextAreaElement;
+  insertButton: HTMLButtonElement | HTMLAnchorElement;
   embedPreviewDelayMs?: number;
 }
 
 export class ContentBlockPicker {
   readonly embedPreviewDelayMs: number;
   textarea: HTMLTextAreaElement;
+  insertButton: HTMLButtonElement | HTMLAnchorElement;
   wrapper: HTMLDivElement;
   highlight: HTMLDivElement;
   preview: HTMLDivElement;
@@ -29,11 +32,19 @@ export class ContentBlockPicker {
   blockListRequest?: Promise<ContentBlock[]>;
   embedCodeHighlight: EmbedCodeHighlight;
 
-  constructor(element: Element, options: ContentBlockPickerOptions) {
+  constructor(options: ContentBlockPickerOptions) {
     this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
-    this.textarea = this.initializeModule(element);
+    if (!options.textarea)
+      throw new MissingArgumentError("options.textarea must be supplied");
+    this.textarea = options.textarea;
+
+    if (!options.insertButton)
+      throw new MissingArgumentError("options.insertButton must be supplied ");
+    this.insertButton = options.insertButton;
+
     this.wrapper = this.createWrapper();
     this.highlight = this.createHighlight();
+    this.blockListElement = this.createBlockListElement();
 
     this.preview = createHoverPreviewElement();
     this.wrapper.appendChild(this.preview);
@@ -64,11 +75,9 @@ export class ContentBlockPicker {
     this.textarea.addEventListener("mouseleave", () =>
       this.onTextareaMouseLeave(),
     );
-    if (this.textarea.dataset.cbpInsertBlockButton) {
-      this.blockListElement = this.createBlockListElement();
-      this.attachInsertBlockButtonListener(this.blockListElement);
-      this.attachBlockListHideListeners(this.blockListElement);
-    }
+
+    this.attachInsertBlockButtonListener(this.blockListElement);
+    this.attachBlockListHideListeners(this.blockListElement);
 
     // checks for changes to the dimensions of the textarea, and syncs the scroll position of the highlight accordingly
     // see docs: https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver
@@ -80,14 +89,6 @@ export class ContentBlockPicker {
   syncScroll() {
     this.highlight.scrollTop = this.textarea.scrollTop;
     this.highlight.scrollLeft = this.textarea.scrollLeft;
-  }
-
-  initializeModule(element: Element): HTMLTextAreaElement {
-    if (element instanceof HTMLTextAreaElement) {
-      return element as HTMLTextAreaElement;
-    } else {
-      throw new Error(`The module ${element.outerHTML} is not a textarea`);
-    }
   }
 
   createWrapper(): HTMLDivElement {
@@ -125,17 +126,11 @@ export class ContentBlockPicker {
   }
 
   attachInsertBlockButtonListener(blockListElement: HTMLDivElement) {
-    const buttonId = this.textarea.dataset.cbpInsertBlockButton;
-    if (!buttonId) return;
-
-    const button = document.getElementById(buttonId);
-    if (!(button instanceof HTMLButtonElement)) return;
-
-    button.addEventListener("click", (event) => {
+    this.insertButton.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (blockListElement) {
-        this.showBlockListElement(button, blockListElement);
+        this.showBlockListElement(this.insertButton, blockListElement);
       }
     });
   }
@@ -160,8 +155,8 @@ export class ContentBlockPicker {
   }
 
   showBlockListElement(
-    button: HTMLButtonElement,
-    blockListElement: HTMLDivElement,
+    button: typeof this.insertButton,
+    blockListElement: NonNullable<typeof this.blockListElement>,
   ) {
     const buttonRect = button.getBoundingClientRect();
     const topMargin = 8;
@@ -393,17 +388,11 @@ export class ContentBlockPicker {
       this.hoverPreviewTimeoutId = undefined;
     }
   }
+}
 
-  static initAll(
-    options: ContentBlockPickerOptions,
-    scope: ParentNode = document,
-  ): ContentBlockPicker[] {
-    const elements = scope.querySelectorAll(
-      '[data-module~="content-block-highlight"]',
-    );
-
-    return Array.from(elements).map(
-      (element) => new ContentBlockPicker(element, options),
-    );
+export class MissingArgumentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MissingArgumentError";
   }
 }
