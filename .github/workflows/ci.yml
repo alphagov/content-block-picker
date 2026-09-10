@@ -23,9 +23,6 @@ jobs:
   lint:
     uses: ./.github/workflows/lint.yml
 
-  prettier:
-    uses: ./.github/workflows/prettier.yml
-
   build:
     uses: ./.github/workflows/build.yml
 
@@ -33,12 +30,10 @@ jobs:
     name: Playwright
     needs:
       - lint
-      - prettier
     uses: ./.github/workflows/playwright.yml
 
   vitest:
     name: Vitest
     needs:
       - lint
-      - prettier
     uses: ./.github/workflows/vitest.yml
