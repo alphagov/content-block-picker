@@ -1,8 +1,7 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
 
-const cbmEndpoint =
-  process.env.CBM_ENDPOINT || "http://content-block-manager.dev.gov.uk";
+const cbmEndpoint = process.env.CBM_ENDPOINT || "http://content-block-manager.dev.gov.uk";
 
 export default defineConfig({
   assetsInclude: ["**/*.njk"],
@@ -41,10 +40,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      govuk: resolve(
-        import.meta.dirname,
-        "node_modules/govuk-frontend/dist/govuk",
-      ),
+      govuk: resolve(import.meta.dirname, "node_modules/govuk-frontend/dist/govuk"),
     },
   },
   test: {

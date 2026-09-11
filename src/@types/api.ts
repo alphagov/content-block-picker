@@ -1,9 +1,7 @@
 /**
  * Represents an embed code response from the API.
  */
-export type EmbedCodePreview =
-  | { html: string; valid: true; error: null }
-  | { html: null; valid: false; error: Error };
+export type EmbedCodePreview = { html: string; valid: true; error: null } | { html: null; valid: false; error: Error };
 
 export enum BlockType {
   Pension = "Pension",

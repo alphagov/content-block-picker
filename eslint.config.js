@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import globals from "globals";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
+import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 
 export default defineConfig([
   globalIgnores(["dist/**", "node_modules/**", "playwright-report/**"]),
@@ -20,4 +21,5 @@ export default defineConfig([
     languageOptions: { globals: globals.node },
   },
   tseslint.configs.recommended,
+  eslintPluginPrettierRecommended,
 ]);
