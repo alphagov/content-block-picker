@@ -1,6 +1,6 @@
 {
   "name": "content-block-picker",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "main": "./dist/content-block-picker.umd.js",
   "module": "./dist/content-block-picker.es.js",
   "style": "./dist/content-block-picker.css",
