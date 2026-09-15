@@ -7,13 +7,6 @@ import nunjucksEnv from "./nunjucks-env.ts";
 import blockListTemplate from "./templates/block-list.njk?raw";
 import { EmbedCodeHighlight } from "./content-block/embed-code-highlight.ts";
 
-export interface ContentBlockPickerOptions {
-  baseUrl: string;
-  textarea: HTMLTextAreaElement;
-  insertButton: HTMLButtonElement | HTMLAnchorElement;
-  embedPreviewDelayMs?: number;
-}
-
 export class ContentBlockPicker {
   readonly embedPreviewDelayMs: number;
   textarea: HTMLTextAreaElement;
@@ -29,13 +22,22 @@ export class ContentBlockPicker {
   blockListRequest?: Promise<ContentBlock[]>;
   embedCodeHighlight: EmbedCodeHighlight;
 
-  constructor(options: ContentBlockPickerOptions) {
-    this.embedPreviewDelayMs = options.embedPreviewDelayMs ?? 200;
-    if (!options.textarea) throw new MissingArgumentError("options.textarea must be supplied");
-    this.textarea = options.textarea;
+  constructor(module: HTMLElement) {
+    const { pickerBaseUrl, pickerTextarea, pickerInsertButton, pickerEmbedPreviewDelayMs } = module.dataset;
+    console.log(Object.keys(module.dataset));
 
-    if (!options.insertButton) throw new MissingArgumentError("options.insertButton must be supplied ");
-    this.insertButton = options.insertButton;
+    if (!pickerTextarea)
+      throw new MissingArgumentError("data-picker-textarea must be supplied");
+
+    if (!pickerInsertButton)
+      throw new MissingArgumentError("data-picker-insert-button must be supplied");
+
+    if (!pickerBaseUrl)
+      throw new MissingArgumentError("data-picker-base-url must be supplied");
+
+    this.textarea = module.querySelector(pickerTextarea) as HTMLTextAreaElement;
+    this.insertButton = module.querySelector(pickerInsertButton) as HTMLButtonElement | HTMLAnchorElement;
+    this.embedPreviewDelayMs = parseInt(pickerEmbedPreviewDelayMs || '', 10) || 200;
 
     this.wrapper = this.createWrapper();
     this.highlight = this.createHighlight();
@@ -44,8 +46,7 @@ export class ContentBlockPicker {
     this.preview = createHoverPreviewElement();
     this.wrapper.appendChild(this.preview);
 
-    const baseUrl = options.baseUrl;
-    this.apiClient = new APIClient(baseUrl);
+    this.apiClient = new APIClient(pickerBaseUrl);
 
     this.textarea.classList.add("content-block-highlight__input");
 

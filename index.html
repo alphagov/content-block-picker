@@ -66,7 +66,12 @@
     </header>
     <div class="govuk-width-container">
       <main class="govuk-main-wrapper" id="main-content">
-        <div id="app">
+        <div
+          id="app"
+          data-picker-textarea=".my-textarea"
+          data-picker-insert-button="#insert-content-block-button"
+          data-picker-base-url="http://localhost:5173"
+          data-picker-embed-preview-delay-ms="500">
           <h1 class="govuk-heading-xl">Content Block Picker</h1>
           <button class="govuk-button" id="insert-content-block-button">
             Insert block
@@ -119,11 +124,7 @@
     </script>
     <script type="module">
       import { ContentBlockPicker } from "/src/content-block-picker.ts";
-      new ContentBlockPicker({
-        baseUrl: "http://localhost:5173/",
-        textarea: document.querySelector(".my-textarea"),
-        insertButton: document.getElementById("insert-content-block-button"),
-      });
+      new ContentBlockPicker(document.querySelector("#app"));
     </script>
   </body>
 </html>

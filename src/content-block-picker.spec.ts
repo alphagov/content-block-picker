@@ -48,20 +48,18 @@ describe("ContentBlockPicker", () => {
 
   function setupPickerWithInsertButton() {
     document.body.innerHTML = `
-      <button id="insert-content-block-button">Insert block</button>
-      <textarea
-        id="my-textarea"
-        data-module="content-block-highlight"
-      ></textarea>
-    `;
+      <div
+        id="container"
+        data-picker-insert-block-button="#insert-content-block-button"
+        data-picker-textarea="#my-textarea"
+        data-picker-base-url="${baseUrl}">
+        <button id="insert-content-block-button">Insert block</button>
+        <textarea id="my-textarea"></textarea>
+      </div>`;
 
     const textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
     const insertButton = document.getElementById("insert-content-block-button") as HTMLButtonElement;
-    const pickerInstance = new ContentBlockPicker({
-      baseUrl,
-      textarea: textarea,
-      insertButton,
-    });
+    const pickerInstance = new ContentBlockPicker(document.getElementById("container") as HTMLDivElement);
 
     // Mock fetchPreview to return valid responses by default
     vi.spyOn(pickerInstance.apiClient, "fetchPreview").mockResolvedValue({
@@ -76,18 +74,13 @@ describe("ContentBlockPicker", () => {
   beforeEach(() => {
     document.body.innerHTML = `
       <div id="container">
-        <textarea id="my-textarea" data-module="content-block-highlight"></textarea>
+        <textarea id="my-textarea"></textarea>
         <button id="insert-content-block-button">Insert</button>
       </div>
     `;
     textarea = document.getElementById("my-textarea") as HTMLTextAreaElement;
     insertButton = document.getElementById("insert-content-block-button") as HTMLButtonElement;
-    picker = new ContentBlockPicker({
-      baseUrl,
-      embedPreviewDelayMs,
-      textarea,
-      insertButton,
-    });
+    picker = new ContentBlockPicker(document.getElementById("container") as HTMLDivElement);
 
     // Mock fetchPreview to return valid responses by default
     vi.spyOn(picker.apiClient, "fetchPreview").mockResolvedValue({
@@ -111,22 +104,14 @@ describe("ContentBlockPicker", () => {
     describe("when called with missing required params", () => {
       test("it should throw an error when the textarea param is missing", () => {
         const invalidConstruction = () =>
-          new ContentBlockPicker({
-            textarea: null as unknown as HTMLTextAreaElement,
-            insertButton: document.createElement("button"),
-            baseUrl: "http://example",
-          });
+          new ContentBlockPicker(document.getElementById("container") as HTMLDivElement);
 
         expect(invalidConstruction).toThrow(MissingArgumentError);
       });
 
       test("it should throw an error when the insertButton param is missing", () => {
         const invalidConstruction = () =>
-          new ContentBlockPicker({
-            textarea: document.createElement("textarea"),
-            insertButton: null as unknown as HTMLButtonElement,
-            baseUrl: "http://example",
-          });
+          new ContentBlockPicker(document.getElementById("container") as HTMLDivElement); // make this use a different bit of html
 
         expect(invalidConstruction).toThrow(MissingArgumentError);
       });
@@ -288,12 +273,7 @@ describe("ContentBlockPicker", () => {
 
   describe("constructor & events", () => {
     test("the constructor initializes everything correctly", () => {
-      const pickerInstance = new ContentBlockPicker({
-        baseUrl,
-        textarea,
-        insertButton,
-        embedPreviewDelayMs,
-      });
+      const pickerInstance = new ContentBlockPicker(document.getElementById("container") as HTMLDivElement);
 
       expect(pickerInstance.textarea).toBe(textarea);
       expect(pickerInstance.wrapper.classList.contains("content-block-highlight__wrapper")).toBe(true);
@@ -305,11 +285,7 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it updates the highlight on input", async () => {
-      const pickerInstance = new ContentBlockPicker({
-        baseUrl,
-        textarea,
-        insertButton,
-      });
+      const pickerInstance = new ContentBlockPicker(document.getElementById("container") as HTMLDivElement);
       vi.spyOn(pickerInstance.apiClient, "fetchPreview").mockResolvedValue({
         html: "<p>Rendered</p>",
         valid: true,
@@ -326,11 +302,7 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it syncs scroll positions", () => {
-      const pickerInstance = new ContentBlockPicker({
-        baseUrl,
-        textarea,
-        insertButton,
-      });
+      const pickerInstance = new ContentBlockPicker(document.getElementById("container") as HTMLDivElement);
       textarea.scrollTop = 50;
       textarea.scrollLeft = 20;
       textarea.dispatchEvent(new Event("scroll"));
@@ -341,7 +313,7 @@ describe("ContentBlockPicker", () => {
 
     test("it initializes ResizeObserver to sync scroll on resize", () => {
       const observeSpy = vi.spyOn(ResizeObserver.prototype, "observe");
-      new ContentBlockPicker({ baseUrl, textarea, insertButton });
+      new ContentBlockPicker(document.getElementById("container") as HTMLDivElement);
 
       expect(observeSpy).toHaveBeenCalledWith(textarea);
     });
@@ -410,7 +382,7 @@ describe("ContentBlockPicker", () => {
 
     test("it does not start a second block fetch while the first one is in flight", async () => {
       const { insertButton, pickerInstance } = setupPickerWithInsertButton();
-      let resolveBlocks: (blocks: ContentBlock[]) => void = () => {};
+      let resolveBlocks: (blocks: ContentBlock[]) => void = () => { };
       const pendingBlocks = new Promise<ContentBlock[]>((resolve) => {
         resolveBlocks = resolve;
       });
@@ -730,15 +702,13 @@ describe("ContentBlockPicker", () => {
         <button id="insert-content-block-button-1">Insert block 1</button>
         <textarea
           id="my-textarea-1"
-          data-module="content-block-highlight"
-          data-cbp-insert-block-button="insert-content-block-button-1"
+          data-picker-insert-block-button="insert-content-block-button-1"
         ></textarea>
 
         <button id="insert-content-block-button-2">Insert block 2</button>
         <textarea
           id="my-textarea-2"
-          data-module="content-block-highlight"
-          data-cbp-insert-block-button="insert-content-block-button-2"
+          data-picker-insert-block-button="insert-content-block-button-2"
         ></textarea>
       `;
 
@@ -748,16 +718,8 @@ describe("ContentBlockPicker", () => {
       const textareaOne = document.getElementById("my-textarea-1") as HTMLTextAreaElement;
       const textareaTwo = document.getElementById("my-textarea-2") as HTMLTextAreaElement;
 
-      const firstPicker = new ContentBlockPicker({
-        baseUrl,
-        textarea: textareaOne,
-        insertButton: insertButtonOne,
-      });
-      const secondPicker = new ContentBlockPicker({
-        baseUrl,
-        textarea: textareaTwo,
-        insertButton: insertButtonTwo,
-      });
+      const firstPicker = new ContentBlockPicker(document.getElementById("container") as HTMLDivElement);
+      const secondPicker = new ContentBlockPicker(document.getElementById("container") as HTMLDivElement); // make this use a different bit of html
 
       // Mock fetchPreview for both pickers
       vi.spyOn(firstPicker.apiClient, "fetchPreview").mockResolvedValue({
