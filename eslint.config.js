@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 
 export default defineConfig([
-  globalIgnores(["dist/**", "node_modules/**", "playwright-report/**"]),
+  globalIgnores(["dist/**", "node_modules/**", "playwright-report/**", "commitlint.config.js"]),
   { files: ["**/*.{js,mjs,cjs,ts}"] },
   {
     files: ["**/*.{js,mjs,cjs,ts}"],
