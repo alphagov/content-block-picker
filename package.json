@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "dompurify": "^3.4.15",
-    "govuk-frontend": "^6.5.0"
+    "govuk-frontend": "^6.5.1"
   },
   "repository": {
     "type": "git",
