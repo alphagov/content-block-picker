@@ -5,20 +5,20 @@ A lightweight, drop-in textarea highlighter for highlighting content blocks with
 ## Local development
 
 1. Clone the repo
-1. Install dependencies:
+2. Install dependencies:
 
    ```bash
    npm install
    ```
 
-1. Run the development server:
+3. Run the development server:
 
    ```bash
    npm run dev
    ```
 
-1. Access the [Demo Picker](http://localhost:5173/)
-1. Run tests
+4. Access the [Demo Picker](http://localhost:5173/)
+5. Run tests
 
    ### Unit tests
 
@@ -79,18 +79,20 @@ You can see a [demo of the work so far here](https://alphagov.github.io/content-
 
 In future, we'd like to provide previews of the content blocks when the user hovers over an embed code.
 
-## Release Process
+# Release process
 
-This package is published to npm at https://www.npmjs.com/package/content-block-picker. In order to trigger a new release we simply need to:
+1. Run `npm version <major|minor|patch|x.y.z>`.
 
-1. Bump the version number in the package.json file.
+   For example, `npm version minor` or `npm version 2.1.3`.
 
-   This can be done with the `npm version` command, e.g. `npm version minor` or `npm version 2.1.3`.
+2. The version lifecycle regenerates `CHANGELOG.md` from conventional commits and stages it alongside `package.json` and `package-lock.json`. The changelog is rebuilt from scratch, so rerunning the command does not duplicate entries.
 
-2. Commit and merge this change to main.
+3. Commit and merge this change to main.
 
    Observing the usual PR process.
 
-3. Run the 'Publish to NPM' action in GitHub Actions.
+4. Run the 'Publish to NPM' action in GitHub Actions.
 
    Navigate to https://github.com/alphagov/content-block-picker/actions/workflows/publish-to-npm.yml and run a new workflow.
+
+For more details of changelog generation to this project, see [CONTRIBUTING.md](CONTRIBUTING.md#changelog-).
