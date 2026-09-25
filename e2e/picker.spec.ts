@@ -1,10 +1,10 @@
 import { test, expect } from "@playwright/test";
 
-test.beforeEach(async ({ page }) => {
-  await page.goto("/");
-});
-
 test.describe("Content Block Picker", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/");
+  });
+
   test("it makes the highlighter visible", async ({ page }) => {
     const wrapper = page.locator(".content-block-highlight__wrapper");
     const textarea = page.locator("textarea.content-block-highlight__input");
@@ -119,6 +119,8 @@ test.describe("List available blocks", () => {
       });
     });
 
+    await page.goto("/");
+
     const insertButton = page.locator("#insert-content-block-button");
     const blockList = page.locator(".content-block-highlight__block-list");
 
@@ -189,6 +191,8 @@ test.describe("List available blocks", () => {
       });
     });
 
+    await page.goto("/");
+
     const insertButton = page.locator("#insert-content-block-button");
     const blockList = page.locator(".content-block-highlight__block-list");
     const textarea = page.locator("textarea.content-block-highlight__input");
@@ -213,6 +217,8 @@ test.describe("List available blocks", () => {
         body: JSON.stringify({ error: "Internal Server Error" }),
       });
     });
+
+    await page.goto("/");
 
     const insertButton = page.locator("#insert-content-block-button");
     const blockList = page.locator(".content-block-highlight__block-list");
@@ -246,6 +252,8 @@ test.describe("List available blocks", () => {
         body: JSON.stringify(mockBlocks),
       });
     });
+
+    await page.goto("/");
 
     const insertButton = page.locator("#insert-content-block-button");
     const blockList = page.locator(".content-block-highlight__block-list");
