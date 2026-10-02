@@ -131,6 +131,13 @@ describe("ContentBlockPicker", () => {
         expect(invalidConstruction).toThrow(MissingArgumentError);
       });
     });
+
+    test("it should populate the cache of block previews", async () => {
+      const fetchMock = mockSuccessFetch();
+      setupPickerWithInsertButton();
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe("createHighlight", () => {
@@ -348,13 +355,11 @@ describe("ContentBlockPicker", () => {
 
     test("it shows a fetching message when the configured insert button is clicked", async () => {
       const { insertButton, pickerInstance } = setupPickerWithInsertButton();
-      const fetchAllBlocksMock = vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockResolvedValue(sampleBlocks);
 
       expect(pickerInstance.blockListElement?.hidden).toBe(true);
 
       insertButton.click();
 
-      expect(fetchAllBlocksMock).toHaveBeenCalledTimes(1);
       expect(pickerInstance.blockListElement?.hidden).toBe(false);
       expect(pickerInstance.blockListElement?.textContent).toBe("Fetching blocks...");
       expect(pickerInstance.blockListElement?.getAttribute("aria-hidden")).toBe("false");
@@ -409,6 +414,7 @@ describe("ContentBlockPicker", () => {
     });
 
     test("it does not start a second block fetch while the first one is in flight", async () => {
+      mockSuccessFetch();
       const { insertButton, pickerInstance } = setupPickerWithInsertButton();
       let resolveBlocks: (blocks: ContentBlock[]) => void = () => {};
       const pendingBlocks = new Promise<ContentBlock[]>((resolve) => {
@@ -416,6 +422,9 @@ describe("ContentBlockPicker", () => {
       });
 
       const fetchAllBlocksMock = vi.spyOn(pickerInstance.apiClient, "fetchAllBlocks").mockReturnValue(pendingBlocks);
+
+      // wait for the initial fetch to finish before starting our test
+      await pickerInstance.blockListRequest;
 
       insertButton.click();
       insertButton.click();
