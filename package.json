@@ -38,7 +38,7 @@
     "vitest": "^5.0.2"
   },
   "dependencies": {
-    "dompurify": "^3.4.15",
+    "dompurify": "^3.4.16",
     "govuk-frontend": "^6.5.1"
   },
   "repository": {
