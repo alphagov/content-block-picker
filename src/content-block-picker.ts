@@ -52,6 +52,8 @@ export class ContentBlockPicker {
     this.embedCodeHighlight = new EmbedCodeHighlight(this.highlight, this.apiClient);
     this.embedCodeHighlight.update(this.textarea.value);
 
+    this.fetchAndRenderBlockList();
+
     this.textarea.addEventListener("input", () => {
       this.embedCodeHighlight.update(this.textarea.value);
     });
