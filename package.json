@@ -31,7 +31,7 @@
     "lint-staged": "^17.6.0",
     "nunjucks": "^3.2.4",
     "prettier": "^3.10.1",
-    "sass-embedded": "^1.108.1",
+    "sass-embedded": "^1.108.2",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.2",
     "vite": "^8.3.8",
