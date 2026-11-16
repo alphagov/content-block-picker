@@ -30,7 +30,7 @@
     "jsdom": "^31.0.0",
     "lint-staged": "^17.6.0",
     "nunjucks": "^3.2.4",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.1",
     "sass-embedded": "^1.108.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.72.2",
